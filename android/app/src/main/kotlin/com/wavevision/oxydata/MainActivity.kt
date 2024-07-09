@@ -1,4 +1,4 @@
-package com.example.oxydata
+package com.wavevision.oxydata
 
 import io.flutter.embedding.android.FlutterActivity
 

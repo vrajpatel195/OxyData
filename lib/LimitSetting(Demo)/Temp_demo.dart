@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../widgets/demo.dart';
+
 class TempDemo extends StatefulWidget {
   const TempDemo({super.key});
 
@@ -57,7 +59,8 @@ class _TempState extends State<TempDemo> {
       appBar: AppBar(
         leading: IconButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.push(
+                  context, MaterialPageRoute(builder: (context) => DemoWid()));
             },
             icon: Icon(Icons.arrow_back_outlined)),
         title: Center(

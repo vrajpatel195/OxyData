@@ -59,9 +59,9 @@ class _PressureState extends State<PressureDemo> {
       backgroundColor: Color.fromRGBO(255, 255, 255, 1),
       appBar: AppBar(
         leading: IconButton(
-            onPressed: () {
-              Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => DemoWid()));
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              Navigator.pop(context, prefs);
             },
             icon: Icon(Icons.arrow_back_outlined)),
         title: Center(

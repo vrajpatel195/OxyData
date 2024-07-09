@@ -65,44 +65,47 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            Image.asset('assets/oxy_logo.png', width: 70, height: 70),
-            SizedBox(
-              width: MediaQuery.of(context).size.width * 0.3,
-              height: 10,
-            ),
-            const Text(
-              'User Detail',
-              style: TextStyle(color: Colors.black),
-            ),
-            SizedBox(
-              width: MediaQuery.of(context).size.width * 0.24,
-              height: 10,
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DemoWid(),
-                  ),
-                );
-              },
-              child: Text(
-                'Demo Mode',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+        title: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: Row(
+            children: [
+              Image.asset('assets/oxy_logo.png', width: 70, height: 70),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.3,
+                height: 10,
               ),
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
+              const Text(
+                'User Detail',
+                style: TextStyle(color: Colors.black),
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.24,
+                height: 10,
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DemoWid(),
+                    ),
+                  );
+                },
+                child: Text(
+                  'Demo Mode',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
+                ),
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         backgroundColor: Color.fromRGBO(231, 223, 223, 100),
       ),

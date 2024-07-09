@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../widgets/demo.dart';
+
 class PurityDemo extends StatefulWidget {
   const PurityDemo({super.key});
 
@@ -58,7 +60,7 @@ class _PurityState extends State<PurityDemo> {
       appBar: AppBar(
         leading: IconButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(context, true);
             },
             icon: Icon(Icons.arrow_back_outlined)),
         title: Center(

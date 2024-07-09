@@ -58,9 +58,9 @@ class _FlowDemoState extends State<FlowDemo> {
       backgroundColor: Color.fromRGBO(255, 255, 255, 1),
       appBar: AppBar(
         leading: IconButton(
-            onPressed: () {
-              Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => DemoWid()));
+            onPressed: () async {
+              //await SharedPreferences.getInstance();
+              Navigator.pop(context);
             },
             icon: Icon(Icons.arrow_back_outlined)),
         title: Center(

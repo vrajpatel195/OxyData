@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:pressdata/screens/report_screen.dart';
-// import 'package:pressdata/screens/setting.dart';
-// import 'package:pressdata/widgets/linechart.dart';
 import 'dart:async';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+import '../widgets/demo.dart';
+import 'HomePage.dart';
 
 class Dashboard extends StatefulWidget {
   Dashboard({
@@ -18,11 +18,15 @@ class Dashboard extends StatefulWidget {
   }
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardState extends State<Dashboard>
+    with SingleTickerProviderStateMixin {
   String? _wifiName;
   bool _isLoading = true;
-  String _targetWifiName = "null";
-  // final LineCharWid _lineChartWid = LineCharWid();
+  String _targetWifiName = "Press_data";
+  //final LineCharWid _lineChartWid = LineCharWid();
+
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
   @override
   void initState() {
@@ -30,12 +34,26 @@ class _DashboardState extends State<Dashboard> {
     _initWifiName();
     // Start periodic checking of WiFi network
     _startWifiCheckTimer();
+
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 1),
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 1.0, end: 1.5).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   @override
   void dispose() {
     // Cancel the timer when the widget is disposed
     _stopWifiCheckTimer();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -91,147 +109,104 @@ class _DashboardState extends State<Dashboard> {
   @override
   Widget build(BuildContext context) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Center(
-              child: RichText(
-                text: const TextSpan(
-                    text: 'Press ',
-                    style: TextStyle(
-                        color: Color.fromRGBO(0, 25, 152, 1),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 25),
-                    children: [
-                      TextSpan(
-                        text: 'Data ',
-                        style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(
-                        text: 'Medical Gas Alram + Analyser ',
-                        style: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0), fontSize: 20),
-                      ),
-                    ]),
+    return PopScope(
+    canPop: false,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Center(
+                child: RichText(
+                  text: const TextSpan(
+                      text: 'Oxy ',
+                      style: TextStyle(
+                          color: Color.fromARGB(255, 0, 0, 0), fontSize: 25),
+                      children: [
+                        TextSpan(
+                          text: 'Data -',
+                          style: TextStyle(
+                              color: Color.fromARGB(255, 0, 0, 0), fontSize: 25),
+                        ),
+                        TextSpan(
+                          text: ' Oxygen Data Analyser',
+                          style: TextStyle(
+                              color: Color.fromARGB(255, 0, 0, 0), fontSize: 20),
+                        ),
+                      ]),
+                ),
               ),
-            ),
-          ],
-        ),
-        toolbarHeight: 40,
-        backgroundColor: Color.fromRGBO(228, 100, 128, 100),
-      ),
-      body: Stack(
-        children: [
-          // _lineChartWid,
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: 30,
-              color: Colors.grey[200], // Background color of the bar
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Spacer(flex: 20),
-                  const Text(
-                    'SYSTEM IS RUNNING OK',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(
-                    flex: 12,
-                  ),
-                  Positioned(
-                    right: 130,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 12.0),
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                              style: BorderStyle.solid, color: Colors.black87),
-                          borderRadius:
-                              BorderRadius.circular(5), // Square corners
-                        ),
-                        minimumSize:
-                            Size(90, 25), // Set minimum size to maintain height
-                        backgroundColor: Color.fromARGB(255, 192, 191, 191),
-                      ),
-                      onPressed: () async {
-                        // Navigator.push(
-                        //   context,
-                        //   MaterialPageRoute(builder: (context) => Setting1()),
-                        // );
-                      },
-                      child: const Text(
-                        'Settings',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          shadows: [
-                            Shadow(
-                              blurRadius: 4,
-                              color: Colors.grey,
-                              offset: Offset(2, 1.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12), // Add spacing between the buttons
-                  Positioned(
-                    right: 20,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 12.0),
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                              style: BorderStyle.solid, color: Colors.black87),
-                          borderRadius:
-                              BorderRadius.circular(5), // Square corners
-                        ),
-                        minimumSize:
-                            Size(90, 25), // Set minimum size to maintain height
-                        backgroundColor: Color.fromARGB(255, 192, 191, 191),
-                      ),
-                      onPressed: () async {
-                        // Uint8List imageBytes =
-                        //     await _lineChartWid.captureChartImage();
-                        // Navigator.push(
-                        //   context,
-                        //   MaterialPageRoute(
-                        //     builder: (context) =>
-                        //         ReportScreen(imageBytes: imageBytes),
-                        //   ),
-                        // );
-                      },
-                      child: const Text(
-                        'Report',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color.fromARGB(255, 0, 0, 0),
-                          shadows: [
-                            Shadow(
-                              blurRadius: 4,
-                              color: Colors.grey,
-                              offset: Offset(2, 1.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Spacer(),
-                ],
-              ),
-            ),
+            ],
           ),
-        ],
+          toolbarHeight: 40,
+          backgroundColor: Color.fromRGBO(255, 255, 255, 0.612),
+        ),
+        body: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : _wifiName != null && _wifiName == "\"${_targetWifiName}\""
+                ? Stack(
+                    children: [
+                      // _lineChartWid,
+                    ],
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _animation,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _animation.value,
+                              child: Icon(
+                                Icons.wifi_off,
+                                size: 50,
+                              ),
+                            );
+                          },
+                        ),
+                        SizedBox(height: 10),
+                        Text("Internet is not connected"),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(horizontal: 12.0),
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(
+                                    style: BorderStyle.solid,
+                                    color: Colors.black87),
+                                borderRadius:
+                                    BorderRadius.circular(5), // Square corners
+                              ),
+                              minimumSize: Size(
+                                  90, 25), // Set minimum size to maintain height
+                              backgroundColor:
+                                  Color.fromARGB(255, 192, 191, 191)),
+                          onPressed: () async {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const DemoWid()));
+                          },
+                          child: const Text(
+                            'Demo Mode',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Color.fromARGB(255, 0, 0, 0),
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 4,
+                                  color: Colors.grey,
+                                  offset: Offset(2, 1.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
       ),
     );
   }
