@@ -1,18 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:oxydata/widgets/demo.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../widgets/demo.dart';
-
-class TempDemo extends StatefulWidget {
-  const TempDemo({super.key});
+class FlowDemo extends StatefulWidget {
+  const FlowDemo({super.key});
 
   @override
-  State<TempDemo> createState() => _TempState();
+  State<FlowDemo> createState() => _FlowDemoState();
 }
 
-class _TempState extends State<TempDemo> {
-  int maxLimit = 60;
+class _FlowDemoState extends State<FlowDemo> {
+  int maxLimit = 0;
   int minLimit = 0;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -25,8 +28,8 @@ class _TempState extends State<TempDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      maxLimit = prefs.getInt('Temp_maxLimit') ?? 0;
-      minLimit = prefs.getInt('Temp_minLimit') ?? 0;
+      maxLimit = prefs.getInt('Flow_maxLimit') ?? 0;
+      minLimit = prefs.getInt('Flow_minLimit') ?? 0;
     });
   }
 
@@ -34,7 +37,7 @@ class _TempState extends State<TempDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toInt() + 1;
-      prefs.setInt('Temp_maxLimit', maxLimit);
+      prefs.setInt('Flow_maxLimit', maxLimit);
     });
   }
 
@@ -42,13 +45,23 @@ class _TempState extends State<TempDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toInt();
-      prefs.setInt('Temp_minLimit', minLimit);
+      prefs.setInt('Flow_minLimit', minLimit);
     });
+  }
+
+  void _startTimer(void Function() callback) {
+    _timer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+      callback();
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
+    _stopTimer();
     super.dispose();
   }
 
@@ -59,19 +72,18 @@ class _TempState extends State<TempDemo> {
       appBar: AppBar(
         leading: IconButton(
             onPressed: () {
-              Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => DemoWid()));
+              Navigator.pop(context);
             },
             icon: Icon(Icons.arrow_back_outlined)),
         title: Center(
           child: Column(
             children: [
               Text(
-                "Temp Limit Settings",
+                "Flow Limit Settings",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(
-                "°C",
+                "LPM",
                 style: TextStyle(fontSize: 15),
               )
             ],
@@ -98,97 +110,141 @@ class _TempState extends State<TempDemo> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.remove),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMaxLimit(maxLimit.toDouble() - 1.0);
-                      // product.minLimit = (product.minLimit > 0) ? product.minLimit - 1 : 0;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMaxLimit(maxLimit.toDouble() - 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.remove, size: 40),
                   ),
                   Container(
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: const Color.fromARGB(255, 44, 238, 144),
+                      color: Color.fromARGB(255, 248, 186, 40),
                       child: Column(
                         children: [
                           Text(
                             '${maxLimit}',
-                            style: TextStyle(
-                                fontSize: 31,
-                                color: Color.fromARGB(255, 0, 0, 0)),
+                            style: TextStyle(fontSize: 31, color: Colors.white),
                           ),
                           Text(
                             "Maximum Limit",
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: const Color.fromARGB(255, 0, 0, 0)),
+                            style: TextStyle(fontSize: 10, color: Colors.white),
                           )
                         ],
                       ),
                       margin: EdgeInsets.all(10),
                     ),
                   ), //${product.minLimit}
-                  IconButton(
-                    icon: Icon(Icons.add),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMaxLimit(maxLimit.toDouble() + 1.0);
-                      // product.minLimit++;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMaxLimit(maxLimit.toDouble() + 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.add, size: 40),
                   ),
                 ],
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.remove),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMinLimit(minLimit.toDouble() - 1.0);
-                      // product.maxLimit = (product.maxLimit > 0) ? product.maxLimit - 1 : 0;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMinLimit(minLimit.toDouble() - 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.remove, size: 40),
                   ),
                   Container(
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: const Color.fromARGB(255, 44, 238, 144),
+                      color: Color.fromARGB(255, 248, 186, 40),
                       child: Column(
                         children: [
                           Text(
                             '${minLimit}',
-                            style: TextStyle(
-                                fontSize: 31,
-                                color: const Color.fromARGB(255, 0, 0, 0)),
+                            style: TextStyle(fontSize: 31, color: Colors.white),
                           ),
                           Text(
                             "Minimum Limit",
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: const Color.fromARGB(255, 0, 0, 0)),
+                            style: TextStyle(fontSize: 10, color: Colors.white),
                           )
                         ],
                       ),
                       margin: EdgeInsets.all(10),
                     ),
                   ), //${product.maxLimit}
-                  IconButton(
-                    icon: Icon(Icons.add),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMinLimit(minLimit.toDouble() + 1.0);
-                      // product.maxLimit++;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMinLimit(minLimit.toDouble() + 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.add, size: 40),
                   ),
                 ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  _changeColor();
+                  final value = 1;
+                  Navigator.pop(context, value);
+                },
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.15,
+                  width: 100,
+                  child: Card(
+                    elevation: 5.0,
+                    color: _cardColor,
+                    child: Center(
+                      child: Text("OK",
+                          style: TextStyle(fontSize: 25, color: Colors.white)),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Color _cardColor = Color.fromARGB(255, 4, 144, 199);
+  void _changeColor() {
+    setState(() {
+      _cardColor = _cardColor == Color.fromARGB(255, 4, 144, 199)
+          ? Colors.red
+          : Color.fromARGB(255, 4, 144, 199);
+    });
   }
 }

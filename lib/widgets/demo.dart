@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:oxydata/LimitSetting(Demo)/Temp_demo.dart';
-import 'package:oxydata/LimitSetting(Demo)/flow_demo.dart';
-import 'package:oxydata/LimitSetting(Demo)/pressure_demo.dart';
-import 'package:oxydata/LimitSetting(Demo)/purity_demo.dart';
-import 'package:oxydata/screens/report_screen.dart';
+import 'package:oxydata/LimitSettingDemo/Temp_demo.dart';
+import 'package:oxydata/LimitSettingDemo/flow_demo.dart';
+import 'package:oxydata/LimitSettingDemo/pressure_demo.dart';
+import 'package:oxydata/LimitSettingDemo/purity_demo.dart';
+import 'package:oxydata/screens/demo_report_screen.dart';
 
 import 'package:intl/intl.dart';
 
@@ -70,7 +70,11 @@ class _DemoWidState extends State<DemoWid> {
   int? Temp_maxLimit;
   int? Temp_minLimit;
 
-  String systemMessage = "SYSTEM IS RUNNING OK";
+  int _currentIndex = 0;
+  String _currentString = 'SYSTEM IS RUNNING OK';
+  Set<String> _uniqueStrings = {};
+  List<String> _uniqueStringList = [];
+
   int secondsElapsed = 0;
   List<ParameterData> parameters = [
     ParameterData(
@@ -110,7 +114,7 @@ class _DemoWidState extends State<DemoWid> {
     const Color.fromARGB(255, 255, 255, 255),
     const Color.fromARGB(255, 255, 255, 255),
     const Color.fromARGB(255, 255, 255, 255),
-    const Color.fromARGB(255, 0, 0, 0),
+    Color.fromARGB(255, 255, 255, 255),
   ];
   void _storeData() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -130,35 +134,41 @@ class _DemoWidState extends State<DemoWid> {
     print("temp -  $Temp_maxLimit");
   }
 
-  void _navigateToDetailPage(int index) {
+  void _navigateToDetailPage(int index) async {
     if (index == 0) {
-      final result = Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => PurityDemo()),
       );
-      if (result == true) {
-        _onReturnFromSecondPage(); // Call custom method when coming back
+
+      if (result == 1) {
+        _storeData();
       }
     } else if (index == 1) {
-      Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => FlowDemo()),
       );
+      if (result == 1) {
+        _storeData();
+      }
     } else if (index == 2) {
-      Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => PressureDemo()),
       );
+      if (result == 1) {
+        _storeData();
+      }
     } else if (index == 3) {
-      Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => TempDemo()),
       );
+      if (result == 1) {
+        _storeData();
+      }
     }
-  }
-
-  void _onReturnFromSecondPage() {
-    _storeData(); // Reload data
   }
 
   late StreamController<void> _updateController;
@@ -174,7 +184,6 @@ class _DemoWidState extends State<DemoWid> {
       setState(() {
         // Remove the first value and add a new random value at the end
 
-        print("object");
         chartData.add(LiveData(
           secondsToTime(secondsElapsed),
           Random().nextInt(10) + 1,
@@ -187,6 +196,7 @@ class _DemoWidState extends State<DemoWid> {
         }
         secondsElapsed++;
         _updateDataSource();
+        _updateCurrentString();
       });
     });
     // Timer.periodic(Duration(seconds: 1), updateDataSource);
@@ -197,6 +207,39 @@ class _DemoWidState extends State<DemoWid> {
     });
     Timer.periodic(const Duration(seconds: 1), (timer) {
       _updateController.add(null);
+    });
+  }
+
+  void _addString(String value) {
+    setState(() {
+      _uniqueStrings.add(value);
+      _uniqueStringList = _uniqueStrings.toList();
+      _resetIndexIfNeeded();
+    });
+  }
+
+  void _removeString(String value) {
+    setState(() {
+      _uniqueStrings.remove(value);
+      _uniqueStringList = _uniqueStrings.toList();
+      _resetIndexIfNeeded();
+    });
+  }
+
+  void _resetIndexIfNeeded() {
+    if (_currentIndex >= _uniqueStringList.length) {
+      _currentIndex = 0;
+    }
+  }
+
+  void _updateCurrentString() {
+    setState(() {
+      if (_uniqueStringList.isNotEmpty) {
+        _currentString = _uniqueStringList[_currentIndex];
+        _currentIndex = (_currentIndex + 1) % _uniqueStringList.length;
+      } else {
+        _currentString = 'SYSTEM IS RUNNING OK';
+      }
     });
   }
 
@@ -244,16 +287,12 @@ class _DemoWidState extends State<DemoWid> {
 
   void _updateData() {
     setState(() {
-      bool isPurityInRange = true;
-      bool isFlowInRange = true;
-      bool isPressureInRange = true;
-      bool isTempInRange = true;
       parameters = parameters.map((param) {
         if (param.name == "Purity") {
           int newvalue = Random().nextInt(10);
           if (newvalue > Purity_maxLimit! || newvalue < Purity_minLimit!) {
-            isPurityInRange = false;
-            systemMessage = "Purity is out of range";
+            _addString("Purity is out of range");
+
             // WidgetsBinding.instance.addPostFrameCallback((_) {
             //   ScaffoldMessenger.of(context).showSnackBar(
             //     SnackBar(
@@ -265,14 +304,15 @@ class _DemoWidState extends State<DemoWid> {
 
             return ParameterData(param.name, Colors.red, newvalue);
           } else {
+            _removeString("Purity is out of range");
             return ParameterData(
                 param.name, const Color.fromARGB(255, 0, 34, 145), newvalue);
           }
         } else if (param.name == "Flow") {
           int newvalue = Random().nextInt(10) + 11;
           if (newvalue > Flow_maxLimit! || newvalue < Flow_minLimit!) {
-            isFlowInRange = false;
-            systemMessage = "Flow is out of range";
+            _addString("Flow is out of range");
+
             // WidgetsBinding.instance.addPostFrameCallback((_) {
             //   ScaffoldMessenger.of(context).showSnackBar(
             //     SnackBar(
@@ -283,14 +323,15 @@ class _DemoWidState extends State<DemoWid> {
             // });
             return ParameterData(param.name, Colors.red, newvalue);
           } else {
+            _removeString("Flow is out of range");
             return ParameterData(
                 param.name, Color.fromARGB(255, 248, 213, 40), newvalue);
           }
         } else if (param.name == "Pressure") {
           int newvalue = Random().nextInt(10) + 21;
           if (newvalue > Pressure_maxLimit! || newvalue < Pressure_minLimit!) {
-            isPressureInRange = false;
-            systemMessage = "Pressure is out of range";
+            _addString("Pressure is out of range");
+
             // WidgetsBinding.instance.addPostFrameCallback((_) {
             //   ScaffoldMessenger.of(context).showSnackBar(
             //     SnackBar(
@@ -300,14 +341,15 @@ class _DemoWidState extends State<DemoWid> {
             // });
             return ParameterData(param.name, Colors.red, newvalue);
           } else {
+            _removeString("Pressure is out of range");
             return ParameterData(
                 param.name, const Color.fromARGB(255, 195, 0, 0), newvalue);
           }
         } else {
           int newvalue = Random().nextInt(10) + 31;
           if (newvalue > Temp_maxLimit! || newvalue < Temp_minLimit!) {
-            isTempInRange = false;
-            systemMessage = "Temp is out of range";
+            _addString("Temp is out of range");
+
             // WidgetsBinding.instance.addPostFrameCallback((_) {
             //   ScaffoldMessenger.of(context).showSnackBar(
             //     SnackBar(
@@ -317,17 +359,12 @@ class _DemoWidState extends State<DemoWid> {
             // });
             return ParameterData(param.name, Colors.red, newvalue);
           } else {
+            _removeString("Temp is out of range");
             return ParameterData(
-                param.name, const Color.fromARGB(255, 44, 238, 144), newvalue);
+                param.name, Color.fromARGB(255, 6, 156, 83), newvalue);
           }
         }
       }).toList();
-      if (isPurityInRange &&
-          isFlowInRange &&
-          isPressureInRange &&
-          isTempInRange) {
-        systemMessage = "SYSTEM IS RUNNING OK";
-      }
     });
   }
 
@@ -669,7 +706,7 @@ class _DemoWidState extends State<DemoWid> {
                                               context,
                                               MaterialPageRoute(
                                                   builder: (context) =>
-                                                      ReportScreen()));
+                                                      DemoReportScreen()));
                                         },
                                         child: Text("Report"),
                                         style: ElevatedButton.styleFrom(
@@ -693,14 +730,16 @@ class _DemoWidState extends State<DemoWid> {
                     alignment: Alignment.bottomCenter,
                     child: Container(
                       height: MediaQuery.of(context).size.height * 0.06,
-                      color: Colors.grey[200], // Background color of the bar
+                      color: _currentString == 'SYSTEM IS RUNNING OK'
+                          ? Colors.grey[200]
+                          : Colors.red, // Background color of the bar
                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
-                            systemMessage,
+                            _currentString,
                             style: TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.bold),
                           ),
@@ -714,4 +753,21 @@ class _DemoWidState extends State<DemoWid> {
           )),
     );
   }
+
+  final List<Map<String, dynamic>> data = [
+    {
+      'timestamp': DateTime.now().toIso8601String(),
+      'purity': 85.0,
+      'flowRate': 15.0,
+      'pressure': 10.0,
+      'temperature': 30.0,
+    },
+    {
+      'timestamp': DateTime.now().add(Duration(minutes: 1)).toIso8601String(),
+      'purity': 86.0,
+      'flowRate': 14.0,
+      'pressure': 11.0,
+      'temperature': 29.0,
+    },
+  ];
 }

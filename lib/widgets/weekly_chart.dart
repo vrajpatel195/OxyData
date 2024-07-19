@@ -7,12 +7,18 @@ import 'package:flutter/rendering.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
 
-import '../screens/report_screen.dart';
+import '../screens/demo_report_screen.dart';
 
 class WeeklyChart extends StatefulWidget {
   final List<String> selectedValues;
-
-  const WeeklyChart({super.key, required this.selectedValues});
+  final DateTime startOfWeek;
+  final DateTime endOfWeek;
+  const WeeklyChart({
+    super.key,
+    required this.selectedValues,
+    required this.startOfWeek,
+    required this.endOfWeek,
+  });
   @override
   State<WeeklyChart> createState() => _WeeklyChartState();
 }
@@ -88,8 +94,6 @@ class _WeeklyChartScreenState extends State<WeeklyChartScreen> {
           name: 'Temp',
         ));
       }
-     
-     
     }
     // Add min and max lines if only one value is selected
     if (widget.selectedValues.length == 1) {
@@ -188,7 +192,7 @@ class _WeeklyChartScreenState extends State<WeeklyChartScreen> {
 
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => ReportScreen(
+          builder: (context) => DemoReportScreen(
             imageBytes: pngBytes,
           ),
         ),

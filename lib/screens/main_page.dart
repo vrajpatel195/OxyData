@@ -1,16 +1,17 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
-
+import '../LimitSetting.dart/api_service.dart';
+import '../LimitSetting.dart/min_max_data.dart';
 import '../widgets/demo.dart';
 import 'HomePage.dart';
+import 'package:http/http.dart' as http;
 
 class Dashboard extends StatefulWidget {
-  Dashboard({
-    super.key,
-  });
+  Dashboard({super.key});
 
   @override
   State<StatefulWidget> createState() {
@@ -21,18 +22,21 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard>
     with SingleTickerProviderStateMixin {
   String? _wifiName;
-  bool _isLoading = true;
-  String _targetWifiName = "Press_data";
-  //final LineCharWid _lineChartWid = LineCharWid();
+  bool _isLoading = false;
+  String _targetWifiName = "Oxydata";
+  final LineCharWid _lineChartWid = LineCharWid();
+  bool checker = false;
 
   late AnimationController _animationController;
   late Animation<double> _animation;
+  String serialNo = '';
+
+  String oxyDataTitle = 'OxyData';
 
   @override
   void initState() {
     super.initState();
     _initWifiName();
-    // Start periodic checking of WiFi network
     _startWifiCheckTimer();
 
     // Initialize animation controller
@@ -59,22 +63,27 @@ class _DashboardState extends State<Dashboard>
 
   void _initWifiName() async {
     // Request necessary permissions
-    await _requestLocationPermissions();
+    // await _requestLocationPermissions();
 
     // Retrieve WiFi name
-    try {
-      String? wifiName = await NetworkInfo().getWifiName();
-      print("wifi name: \"${wifiName}\"");
-      setState(() {
-        _wifiName = wifiName;
-        _isLoading = false;
-      });
-    } on PlatformException catch (e) {
-      print("Failed to get wifi name: '${e.message}'.");
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    // try {
+    //   String? wifiName = await NetworkInfo().getWifiName();
+    //   print("wifi name: \"${wifiName}\"");
+    //   setState(() {
+    //     _wifiName = wifiName;
+    //     _isLoading = false;
+    //   });
+
+    // Check serial number after getting WiFi name
+    await getSerialNo();
+    // } on PlatformException catch (e) {
+    //   print("Failed to get wifi name: '${e.message}'.");
+    //   setState(() {
+    //     _isLoading = false;
+    //   });
+    // }
+
+    // Start periodic WiFi check timer
   }
 
   Future<void> _requestLocationPermissions() async {
@@ -90,8 +99,8 @@ class _DashboardState extends State<Dashboard>
 
   void _startWifiCheckTimer() {
     // Check every 5 seconds
-    _wifiCheckTimer = Timer.periodic(Duration(seconds: 5), (timer) {
-      _updateWifiStatus();
+    _wifiCheckTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
+      await getSerialNo();
     });
   }
 
@@ -99,45 +108,93 @@ class _DashboardState extends State<Dashboard>
     _wifiCheckTimer.cancel();
   }
 
-  void _updateWifiStatus() async {
-    String? wifiName = await NetworkInfo().getWifiName();
-    setState(() {
-      _wifiName = wifiName;
-    });
+  // void _updateWifiStatus() async {
+  //   // String? wifiName = await NetworkInfo().getWifiName();
+  //   // setState(() {
+  //   //   _wifiName = wifiName;
+  //   // });
+  //   // print("wifiName123->>>$wifiName");
+
+  //   // Check serial number after getting WiFi name
+
+  // }
+
+  Future<void> getSerialNo() async {
+    print("hii123");
+    try {
+      MinMaxData data = await ApiService.fetchMinMaxData();
+      print("data123->>>${data}");
+      String newSerialNo = data.serialNo;
+
+      setState(() {
+        serialNo = newSerialNo;
+        if (serialNo.startsWith('OD')) {
+          if (serialNo.startsWith('ODC')) {
+            oxyDataTitle = 'OxyData -C';
+          } else if (serialNo.startsWith('ODG')) {
+            oxyDataTitle = 'OxyData -G';
+          } else if (serialNo.startsWith('ODP')) {
+            print("ODP");
+            oxyDataTitle = 'OxyData -P';
+            print("OxyData -P");
+          }
+
+          setState(() {
+            print("true123");
+            checker = true;
+          });
+        }
+      });
+    } catch (e) {
+      setState(() {
+        print("hii");
+        checker = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     return PopScope(
-    canPop: false,
+      canPop: false,
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Center(
-                child: RichText(
-                  text: const TextSpan(
-                      text: 'Oxy ',
+              Text(
+                "Sr NO. $serialNo",
+                style: TextStyle(
+                  color: Color.fromARGB(255, 0, 0, 0),
+                  fontSize: 16,
+                ),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.center,
+                  child: RichText(
+                    text: TextSpan(
+                      text: '$oxyDataTitle -',
                       style: TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0), fontSize: 25),
+                        color: Color.fromARGB(255, 0, 0, 0),
+                        fontSize: 25,
+                      ),
                       children: [
-                        TextSpan(
-                          text: 'Data -',
-                          style: TextStyle(
-                              color: Color.fromARGB(255, 0, 0, 0), fontSize: 25),
-                        ),
                         TextSpan(
                           text: ' Oxygen Data Analyser',
                           style: TextStyle(
-                              color: Color.fromARGB(255, 0, 0, 0), fontSize: 20),
+                            color: Color.fromARGB(255, 0, 0, 0),
+                            fontSize: 20,
+                          ),
                         ),
-                      ]),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+              // Spacer to balance the layout
             ],
           ),
           toolbarHeight: 40,
@@ -145,10 +202,10 @@ class _DashboardState extends State<Dashboard>
         ),
         body: _isLoading
             ? Center(child: CircularProgressIndicator())
-            : _wifiName != null && _wifiName == "\"${_targetWifiName}\""
+            : (_wifiName == "\"${_targetWifiName}\"") || checker
                 ? Stack(
                     children: [
-                      // _lineChartWid,
+                      _lineChartWid,
                     ],
                   )
                 : Center(
@@ -179,8 +236,8 @@ class _DashboardState extends State<Dashboard>
                                 borderRadius:
                                     BorderRadius.circular(5), // Square corners
                               ),
-                              minimumSize: Size(
-                                  90, 25), // Set minimum size to maintain height
+                              minimumSize: Size(90,
+                                  25), // Set minimum size to maintain height
                               backgroundColor:
                                   Color.fromARGB(255, 192, 191, 191)),
                           onPressed: () async {

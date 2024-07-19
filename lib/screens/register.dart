@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../widgets/demo.dart';
 import 'main_page.dart';
+import '../widgets/demo.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -47,6 +46,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Future<void> _setFirstRunComplete() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isFirstRun', false);
+  }
+
+  Future<void> _saveFormData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('name', _nameController.text);
+    await prefs.setString('hospital_name', _hospitalCompanyController.text);
+    await prefs.setString('city', _cityController.text);
+    await prefs.setString('contactNumber', _contactNumberController.text);
+    await prefs.setString('email', _emailController.text);
   }
 
   void _navigateToMainPage() {
@@ -154,12 +162,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   controller: _contactNumberController,
                   label: 'Contact Number',
                   keyboardType: TextInputType.phone,
-                  // validator: (value) {
-                  //   if (value == null || value.isEmpty) {
-                  //     return 'Please enter your contact number';
-                  //   }
-                  //   return null;
-                  // },
                 ),
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.02,
@@ -168,36 +170,26 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   controller: _emailController,
                   label: 'Email ID',
                   keyboardType: TextInputType.emailAddress,
-                  // validator: (value) {
-                  //   if (value == null || value.isEmpty) {
-                  //     return 'Please enter your email address';
-                  //   }
-                  //   // if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                  //   //   return 'Please enter a valid email address';
-                  //   // }
-                  //   return null;
-                  // },
                 ),
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.02,
                 ),
-                if (_isSubmitButtonEnabled)
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          await _setFirstRunComplete();
-                          _navigateToMainPage();
-                          // Perform form submission
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Form submitted')),
-                          );
-                        }
-                      },
-                      child: Text('Submit'),
-                    ),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (_formKey.currentState?.validate() ?? false) {
+                        await _saveFormData();
+                        await _setFirstRunComplete();
+                        _navigateToMainPage();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Form submitted')),
+                        );
+                      }
+                    },
+                    child: Text('Submit'),
                   ),
+                ),
               ],
             ),
           ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/demo.dart';
@@ -14,7 +14,7 @@ class PressureDemo extends StatefulWidget {
 class _PressureState extends State<PressureDemo> {
   int maxLimit = 60;
   int minLimit = 0;
-
+  Timer? _timer;
   @override
   void initState() {
     loadData();
@@ -47,9 +47,19 @@ class _PressureState extends State<PressureDemo> {
     });
   }
 
+  void _startTimer(void Function() callback) {
+    _timer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+      callback();
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+  }
+
   @override
   void dispose() {
-    // TODO: implement dispose
+    _stopTimer();
     super.dispose();
   }
 
@@ -60,8 +70,7 @@ class _PressureState extends State<PressureDemo> {
       appBar: AppBar(
         leading: IconButton(
             onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              Navigator.pop(context, prefs);
+              Navigator.pop(context);
             },
             icon: Icon(Icons.arrow_back_outlined)),
         title: Center(
@@ -99,13 +108,19 @@ class _PressureState extends State<PressureDemo> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.remove),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMaxLimit(maxLimit.toDouble() - 1.0);
-                      // product.minLimit = (product.minLimit > 0) ? product.minLimit - 1 : 0;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMaxLimit(maxLimit.toDouble() - 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.remove, size: 40),
                   ),
                   Container(
                     height: MediaQuery.of(context).size.height * 0.25,
@@ -127,26 +142,38 @@ class _PressureState extends State<PressureDemo> {
                       margin: EdgeInsets.all(10),
                     ),
                   ), //${product.minLimit}
-                  IconButton(
-                    icon: Icon(Icons.add),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMaxLimit(maxLimit.toDouble() + 1.0);
-                      // product.minLimit++;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMaxLimit(maxLimit.toDouble() + 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.add, size: 40),
                   ),
                 ],
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.remove),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMinLimit(minLimit.toDouble() - 1.0);
-                      // product.maxLimit = (product.maxLimit > 0) ? product.maxLimit - 1 : 0;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMinLimit(minLimit.toDouble() - 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.remove, size: 40),
                   ),
                   Container(
                     height: MediaQuery.of(context).size.height * 0.25,
@@ -168,20 +195,55 @@ class _PressureState extends State<PressureDemo> {
                       margin: EdgeInsets.all(10),
                     ),
                   ), //${product.maxLimit}
-                  IconButton(
-                    icon: Icon(Icons.add),
-                    onPressed: () {
+                  GestureDetector(
+                    onTap: () {
                       updateMinLimit(minLimit.toDouble() + 1.0);
-                      // product.maxLimit++;
-                      // onChanged();
                     },
+                    onLongPressStart: (_) {
+                      _startTimer(() {
+                        updateMinLimit(minLimit.toDouble() + 1.0);
+                      });
+                    },
+                    onLongPressEnd: (_) {
+                      _stopTimer();
+                    },
+                    child: Icon(Icons.add, size: 40),
                   ),
                 ],
+              ),
+
+              GestureDetector(
+                onTap: () {
+                  _changeColor();
+                  final value = 1;
+                  Navigator.pop(context, value);
+                },
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.15,
+                  width: 100,
+                  child: Card(
+                    elevation: 5.0,
+                    color: _cardColor,
+                    child: Center(
+                      child: Text("OK",
+                          style: TextStyle(fontSize: 25, color: Colors.white)),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Color _cardColor = Color.fromARGB(255, 4, 144, 199);
+  void _changeColor() {
+    setState(() {
+      _cardColor = _cardColor == Color.fromARGB(255, 4, 144, 199)
+          ? Colors.red
+          : Color.fromARGB(255, 4, 144, 199);
+    });
   }
 }

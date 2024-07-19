@@ -7,7 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
 
-import '../screens/report_screen.dart';
+import '../screens/demo_report_screen.dart';
 
 class DailyChart extends StatefulWidget {
   final List<String> selectedValues;
@@ -157,7 +157,7 @@ class _LineChartScreenState extends State<LineChartScreen> {
     setState(() {
       _isLoading = true;
     });
-
+    await Future.delayed(Duration(seconds: 10));
     try {
       final RenderRepaintBoundary boundary =
           chartKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
@@ -170,7 +170,7 @@ class _LineChartScreenState extends State<LineChartScreen> {
 
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => ReportScreen(
+          builder: (context) => DemoReportScreen(
             imageBytes: pngBytes,
           ),
         ),
