@@ -53,6 +53,7 @@ dependencies:
   screenshot: ^3.0.0
   syncfusion_flutter_pdf: ^26.1.42
   wifi_iot: ^0.3.19
+  fl_chart: ^0.68.0
  
 dev_dependencies:
   flutter_test:

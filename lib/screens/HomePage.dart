@@ -1032,9 +1032,9 @@ class _LineCharWidState extends State<LineCharWid> {
           setState(() {
             _cache.add({
               'purity': purity,
-              'flowRate': flowRate,
+              'flowRate': flowRate * 10.0,
               'pressure': pressure,
-              'temperature': temperature,
+              'temperature': temperature * 2.0,
               'timestamp': DateTime.now().toIso8601String(),
             });
           });

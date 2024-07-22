@@ -129,6 +129,8 @@ class GraphReportState extends State<GraphReport> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
         title: Text('Chart Screen'),
@@ -150,48 +152,245 @@ class GraphReportState extends State<GraphReport> {
       ),
       body: RepaintBoundary(
         key: _chartKey,
-        child: SfCartesianChart(
-          primaryYAxis: NumericAxis(
-            minimum: 0,
-            maximum: 100,
-            interval: 20,
-          ),
-          primaryXAxis: DateTimeAxis(
-            minimum: _minimumTime,
-            maximum: _maximumTime,
-            intervalType: DateTimeIntervalType.minutes,
-            edgeLabelPlacement: EdgeLabelPlacement.shift,
-            dateFormat: DateFormat('hh:mm'),
-          ),
-          series: <LineSeries<Map<String, dynamic>, DateTime>>[
-            LineSeries<Map<String, dynamic>, DateTime>(
-              dataSource: widget.data,
-              xValueMapper: (Map<String, dynamic> data, _) =>
-                  DateTime.parse(data['timestamp']),
-              yValueMapper: (Map<String, dynamic> data, _) => data['purity'],
-              name: 'Purity',
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Column(
+              children: [
+                SizedBox(
+                  height: screenHeight * 0.020,
+                ),
+                Text(
+                  "10",
+                  style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "8",
+                  style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "6",
+                  style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "4",
+                  style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "2",
+                  style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "0",
+                  style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
-            LineSeries<Map<String, dynamic>, DateTime>(
-              dataSource: widget.data,
-              xValueMapper: (Map<String, dynamic> data, _) =>
-                  DateTime.parse(data['timestamp']),
-              yValueMapper: (Map<String, dynamic> data, _) => data['flowRate'],
-              name: 'Flow',
-            ),
-            LineSeries<Map<String, dynamic>, DateTime>(
-              dataSource: widget.data,
-              xValueMapper: (Map<String, dynamic> data, _) =>
-                  DateTime.parse(data['timestamp']),
-              yValueMapper: (Map<String, dynamic> data, _) => data['pressure'],
-              name: 'Pressure',
-            ),
-            LineSeries<Map<String, dynamic>, DateTime>(
-              dataSource: widget.data,
-              xValueMapper: (Map<String, dynamic> data, _) =>
-                  DateTime.parse(data['timestamp']),
-              yValueMapper: (Map<String, dynamic> data, _) =>
-                  data['temperature'],
-              name: 'Temperature',
+            SizedBox(width: screenWidth * 0.03),
+            Container(
+                height: screenHeight * 0.80,
+                width: screenWidth * 0.80,
+                child: SfCartesianChart(
+                  primaryYAxis: NumericAxis(
+                    minimum: 0,
+                    maximum: 100,
+                    interval: 20,
+                    labelStyle: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight:
+                            FontWeight.bold), // Hide primary Y-axis labels
+                    majorGridLines: MajorGridLines(
+                      color:
+                          Colors.black, // Set the grid line color to dark black
+                      width: 1,
+                    ),
+                    axisLine: AxisLine(
+                      color: Colors
+                          .black, // Set the Y-axis line color to dark black
+                      width: 2,
+                    ),
+                  ),
+                  primaryXAxis: DateTimeAxis(
+                    minimum: _minimumTime,
+                    maximum: _maximumTime,
+                    intervalType: DateTimeIntervalType.minutes,
+                    edgeLabelPlacement: EdgeLabelPlacement.shift,
+                    dateFormat: DateFormat('hh:mm'),
+                    labelStyle: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                    majorGridLines: MajorGridLines(
+                      color:
+                          Colors.black, // Set the grid line color to dark black
+                      width: 1,
+                    ),
+                    axisLine: AxisLine(
+                      color: Colors
+                          .black, // Set the Y-axis line color to dark black
+                      width: 2,
+                    ),
+                  ),
+                  axes: <ChartAxis>[
+                    NumericAxis(
+                      name: 'secondaryYAxis',
+                      opposedPosition: true, // Position on the right
+                      minimum: 0,
+                      maximum: 100,
+                      interval: 20,
+                      labelStyle: TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
+                      majorGridLines: MajorGridLines(
+                        color: Colors
+                            .black, // Set the grid line color to dark black
+                        width: 1,
+                      ),
+                      axisLine: AxisLine(
+                        color: Colors
+                            .black, // Set the Y-axis line color to dark black
+                        width: 2,
+                      ),
+                    ),
+                  ],
+                  series: <LineSeries<Map<String, dynamic>, DateTime>>[
+                    LineSeries<Map<String, dynamic>, DateTime>(
+                      dataSource: widget.data,
+                      xValueMapper: (Map<String, dynamic> data, _) =>
+                          DateTime.parse(data['timestamp']),
+                      yValueMapper: (Map<String, dynamic> data, _) =>
+                          data['purity'],
+                      name: 'Purity',
+                      color: Colors.black,
+                    ),
+                    LineSeries<Map<String, dynamic>, DateTime>(
+                      dataSource: widget.data,
+                      xValueMapper: (Map<String, dynamic> data, _) =>
+                          DateTime.parse(data['timestamp']),
+                      yValueMapper: (Map<String, dynamic> data, _) =>
+                          data['flowRate'],
+                      name: 'Flow',
+                      yAxisName: 'secondaryYAxis',
+                      color: Colors.blue, // Bind to secondary Y-axis
+                    ),
+                    LineSeries<Map<String, dynamic>, DateTime>(
+                        dataSource: widget.data,
+                        xValueMapper: (Map<String, dynamic> data, _) =>
+                            DateTime.parse(data['timestamp']),
+                        yValueMapper: (Map<String, dynamic> data, _) =>
+                            data['pressure'],
+                        name: 'Pressure',
+                        color: Colors.red),
+                    LineSeries<Map<String, dynamic>, DateTime>(
+                      dataSource: widget.data,
+                      xValueMapper: (Map<String, dynamic> data, _) =>
+                          DateTime.parse(data['timestamp']),
+                      yValueMapper: (Map<String, dynamic> data, _) =>
+                          data['temperature'],
+                      name: 'Temperature',
+                      color: Colors.green,
+                    ),
+                  ],
+                )),
+            SizedBox(width: screenWidth * 0.03),
+            Column(
+              children: [
+                SizedBox(
+                  height: screenHeight * 0.020,
+                ),
+                Text(
+                  "50",
+                  style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "40",
+                  style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "30",
+                  style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "20",
+                  style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "10",
+                  style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: screenHeight * 0.067,
+                ),
+                Text(
+                  "0",
+                  style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ],
         ),
@@ -253,14 +452,16 @@ class GraphReportState extends State<GraphReport> {
     // Add chart image and statistics to a single page in PDF
     pdf.addPage(
       pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.all(20),
         build: (pw.Context context) {
           return pw.Container(
-            margin: pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            padding: pw.EdgeInsets.all(2),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.black),
-              borderRadius: pw.BorderRadius.circular(5),
-            ),
+            // margin: pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            // padding: pw.EdgeInsets.all(2),
+            // decoration: pw.BoxDecoration(
+            //   border: pw.Border.all(color: PdfColors.black),
+            //   borderRadius: pw.BorderRadius.circular(5),
+            // ),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
@@ -299,13 +500,31 @@ class GraphReportState extends State<GraphReport> {
                       "End Time: ${DateFormat('HH:mm').format(lastTimestamp)}"),
                 ]),
                 pw.Divider(),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 5),
+                pw.Text(
+                    "Graph - Time (Min 00 to 24 ) Vs Oxygen Parameter Values"),
+                pw.SizedBox(height: 5),
+                pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.center,
+                    children: [
+                      pw.Text("_____ Purity 0-100%"),
+                      pw.SizedBox(width: 10),
+                      pw.Text("_____ Pressure 0-100 PSI",
+                          style: pw.TextStyle(color: PdfColors.red)),
+                      pw.SizedBox(width: 10),
+                      pw.Text("_____ Purity 0-10 LPM",
+                          style: pw.TextStyle(color: PdfColors.blue)),
+                      pw.SizedBox(width: 10),
+                      pw.Text("_____ Purity 0-50 Deg",
+                          style: pw.TextStyle(color: PdfColors.green)),
+                    ]),
+                pw.SizedBox(height: 5),
                 pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.center,
                     children: [
                       pw.Image(
                         pw.MemoryImage(chartImage),
-                        height: 165,
+                        height: 200,
                       ),
                     ]),
                 pw.SizedBox(height: 10),
@@ -318,28 +537,28 @@ class GraphReportState extends State<GraphReport> {
                   ],
                   data: [
                     [
-                      'Oxygen Purity',
-                      '${_minPurity} %',
+                      'Oxygen Purity  (%)',
+                      '${_minPurity}',
                       '${_maxPurity}',
-                      '${_avgPurity.toStringAsFixed(2)} %'
+                      '${_avgPurity.toStringAsFixed(2)}'
                     ],
                     [
-                      'Gas Pressure',
-                      '${_minPressure} PSI',
-                      '${_maxPressure} PSI',
-                      '${_avgPressure.toStringAsFixed(2)} PSI'
+                      'Gas Pressure   (PSI)',
+                      '${_minPressure}',
+                      '${_maxPressure}',
+                      '${_avgPressure.toStringAsFixed(2)}'
                     ],
                     [
-                      'Gas Flow',
-                      '${_minFlow} LPM',
-                      '${_maxFlow} LPM',
-                      '${_avgFlow.toStringAsFixed(2)} LPM'
+                      'Gas Flow   (LPM)',
+                      '${_minFlow}',
+                      '${_maxFlow}',
+                      '${_avgFlow.toStringAsFixed(2)}'
                     ],
                     [
-                      'Gas Temperature',
-                      '${_minTemperature} °C',
-                      '${_maxTemperature} °C',
-                      '${_avgTemperature.toStringAsFixed(2)} °C'
+                      'Gas Temperature  (°C)',
+                      '${_minTemperature}',
+                      '${_maxTemperature}',
+                      '${_avgTemperature.toStringAsFixed(2)}'
                     ],
                   ],
                   headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
@@ -355,31 +574,31 @@ class GraphReportState extends State<GraphReport> {
                   ],
                   data: [
                     [
-                      'Oxygen Purity',
-                      '${data.o2Min} %',
-                      '${data.o2Max} %',
+                      'Oxygen Purity   (%)',
+                      '${data.o2Min}',
+                      '${data.o2Max}',
                     ],
                     [
-                      'Gas Pressure',
-                      '${data.pressureMin} PSI',
-                      '${data.pressureMax} PSI',
+                      'Gas Pressure   (PSI)',
+                      '${data.pressureMin}',
+                      '${data.pressureMax}',
                     ],
                     [
-                      'Gas Flow',
-                      '${data.flowMin} LPM',
-                      '${data.flowMax} LPM',
+                      'Gas Flow   (LPM)',
+                      '${data.flowMin}',
+                      '${data.flowMax}',
                     ],
                     [
-                      'Gas Temperature',
-                      '${data.temperatureMin} °C',
-                      '${data.temperatureMax} °C',
+                      'Gas Temperature  (°C)',
+                      '${data.temperatureMin}',
+                      '${data.temperatureMax}',
                     ],
                   ],
                   headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                   cellAlignment: pw.Alignment.centerLeft,
                   cellHeight: 0.01,
                 ),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 15),
                 pw.Text("Alarm Condition",
                     style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                 pw.Align(
@@ -388,7 +607,7 @@ class GraphReportState extends State<GraphReport> {
                     "Alarm Condition",
                   ),
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 28),
                 pw.Divider(),
                 pw.Text("Remark:", style: regularStyle),
                 pw.Padding(
@@ -400,7 +619,7 @@ class GraphReportState extends State<GraphReport> {
                         pw.Text("Sign:                         ")
                       ]),
                 ),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 18),
                 pw.Divider(),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.center,
