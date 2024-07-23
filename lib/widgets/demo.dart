@@ -23,6 +23,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../screens/register.dart';
+import '../Report_screens/current_report.dart';
 
 class LiveData {
   LiveData(
@@ -55,6 +56,7 @@ class ParameterData {
 }
 
 class _DemoWidState extends State<DemoWid> {
+  late final List<Map<String, dynamic>> _cache;
   List<LiveData> chartData = [];
   late ChartSeriesController _chartSeriesController0;
   late ChartSeriesController _chartSeriesController1;

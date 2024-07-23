@@ -12,7 +12,7 @@ import 'package:oxydata/LimitSetting.dart/pressure_setting.dart';
 import 'package:oxydata/LimitSetting.dart/temp_setting.dart';
 import 'package:oxydata/model/model.dart';
 import 'package:oxydata/screens/report_screen.dart';
-import 'package:oxydata/widgets/graph_report.dart';
+import 'package:oxydata/Report_screens/current_report.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -73,8 +73,6 @@ class _LineCharWidState extends State<LineCharWid> {
   String _currentString = 'SYSTEM IS RUNNING OK';
   Set<String> _uniqueStrings = {};
   List<String> _uniqueStringList = [];
-
-  TextEditingController _remarkController = TextEditingController();
 
   // final StreamController<List<ChartData>> _streamController =
   //     StreamController<List<ChartData>>.broadcast();
@@ -152,9 +150,9 @@ class _LineCharWidState extends State<LineCharWid> {
     });
     _isRunning = true;
 
-    // Timer.periodic(const Duration(minutes: 1), (timer) {
-    //   storeAverageData();
-    // });
+    Timer.periodic(const Duration(minutes: 1), (timer) {
+      storeAverageData();
+    });
 
     _puritySubscription = _purityController.stream.listen((data) {
       setState(() {
@@ -806,31 +804,67 @@ class _LineCharWidState extends State<LineCharWid> {
                         ),
                         Row(
                           children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => ReportScreen()));
-                              },
-                              child: Text("Setting"),
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
+                            GestureDetector(
+                              onTap: () {},
+                              child: Container(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.145,
+                                width: 115,
+                                child: Card(
+                                  color: Colors.blue,
+                                  elevation: 4.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Setting",
+                                          style: TextStyle(
+                                            color: parameterTextColor[2],
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.06,
-                            ),
-                            ElevatedButton(
-                              onPressed: () async {
-                                _showRemarkDialog();
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            ReportScreen(data: _cache)));
                               },
-                              child: Text("Report"),
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
+                              child: Container(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.145,
+                                width: 115,
+                                child: Card(
+                                  color: Colors.blue,
+                                  elevation: 4.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Report",
+                                          style: TextStyle(
+                                            color: parameterTextColor[3],
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -898,108 +932,7 @@ class _LineCharWidState extends State<LineCharWid> {
   double _latestFlowRate = 0.0;
   double _latestPressure = 0.0;
   double _latestTemperature = 0.0;
-  // Future<void> getdata() async {
-  //   var url = Uri.parse('http://192.168.4.1/getdata');
-  //   // final response = await http.get(url);
 
-  //   try {
-  //     final response = await http.get(Uri.parse(url.toString()));
-  //     if (response.statusCode == 200) {
-  //       List<dynamic> data = jsonDecode(response.body);
-
-  //       if (data.isNotEmpty) {
-  //         Map<String, dynamic> jsonData = data[0];
-  //         _purityController.add(double.tryParse(jsonData['Purity']) ?? 0.0);
-  //         _flowRateController
-  //             .add(double.tryParse(jsonData['Flow_Rate']) ?? 0.0);
-  //         _pressureController.add(double.tryParse(jsonData['Pressure']) ?? 0.0);
-  //         _temperatureController
-  //             .add(double.tryParse(jsonData['Temperature']) ?? 0.0);
-
-  //         _puritySubscription = _purityController.stream.listen((data) {
-  //           setState(() {
-  //             _purityData.add(data);
-  //             if (_purityData.length > 20) _purityData.removeAt(0);
-  //           });
-  //         });
-  //         _flowRateSubscription = _flowRateController.stream.listen((data) {
-  //           setState(() {
-  //             _flowRateData.add(data);
-  //             if (_flowRateData.length > 20) _flowRateData.removeAt(0);
-  //           });
-  //         });
-  //         _pressureSubscription = _pressureController.stream.listen((data) {
-  //           setState(() {
-  //             _pressureData.add(data);
-  //             if (_pressureData.length > 20) _pressureData.removeAt(0);
-  //           });
-  //         });
-
-  //         _temperatureSubscription =
-  //             _temperatureController.stream.listen((data) {
-  //           setState(() {
-  //             _temperatureData.add(data);
-  //             if (_temperatureData.length > 20) _temperatureData.removeAt(0);
-  //           });
-  //         });
-  //         setState(() {
-  //           // _purityData.add(
-  //           //     _ChartData(now, double.tryParse(jsonData['Purity']) ?? 0.0));
-  //           // _flowRateData.add(
-  //           //     _ChartData(now, double.tryParse(jsonData['Flow_Rate']) ?? 0.0));
-  //           // _pressureData.add(
-  //           //     _ChartData(now, double.tryParse(jsonData['Pressure']) ?? 0.0));
-  //           // _temperatureData.add(_ChartData(
-  //           //     now, double.tryParse(jsonData['Temperature']) ?? 0.0));
-
-  //           if (_purityData.isNotEmpty) {
-  //             if (_purityData.length > 20) _purityData.removeAt(0);
-  //           }
-  //           if (_flowRateData.isNotEmpty) {
-  //             if (_flowRateData.length > 20) _flowRateData.removeAt(0);
-  //           }
-  //           if (_pressureData.isNotEmpty) {
-  //             if (_pressureData.length > 20) _pressureData.removeAt(0);
-  //           }
-
-  //           if (_purityData.isNotEmpty && _purityChartController != null) {
-  //             _purityChartController?.updateDataSource(
-  //               addedDataIndex: _purityData.length - 1,
-  //               removedDataIndex: 0,
-  //             );
-  //           }
-  //           if (_flowRateData.isNotEmpty && _flowRateChartController != null) {
-  //             _flowRateChartController?.updateDataSource(
-  //               addedDataIndex: _flowRateData.length - 1,
-  //               removedDataIndex: 0,
-  //             );
-  //           }
-
-  //           if (_pressureData.isNotEmpty && _pressureChartController != null) {
-  //             _pressureChartController?.updateDataSource(
-  //               addedDataIndex: _pressureData.length - 1,
-  //               removedDataIndex: 0,
-  //             );
-  //           }
-
-  //           if (_temperatureData.isNotEmpty &&
-  //               _temperatureChartController != null) {
-  //             _temperatureChartController?.updateDataSource(
-  //               addedDataIndex: _temperatureData.length - 1,
-  //               removedDataIndex: 0,
-  //             );
-  //           }
-  //         });
-  //       }
-  //     } else {
-  //       throw Exception('Failed to load data');
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching data: $e');
-  //   }
-
-  //   await Future.delayed(Duration(seconds: 1));
-  // }
   String? _serialNo;
   bool _isRunning = false;
   List<Map<String, dynamic>> _cache = [];
@@ -1032,14 +965,13 @@ class _LineCharWidState extends State<LineCharWid> {
           setState(() {
             _cache.add({
               'purity': purity,
-              'flowRate': flowRate * 10.0,
+              'flowRate': flowRate,
               'pressure': pressure,
-              'temperature': temperature * 2.0,
+              'temperature': temperature,
               'timestamp': DateTime.now().toIso8601String(),
             });
           });
 
-          printStoredData();
           // Add data to stream controllers
           _purityController.add(purity);
           _flowRateController.add(flowRate);
@@ -1057,120 +989,56 @@ class _LineCharWidState extends State<LineCharWid> {
   }
 
   Future<void> printStoredData() async {
-    // print("hii");
-    // List<OxyDatabaseData> storedData = await _db.getAllOxyData();
-    // for (var data in storedData) {
-    //   print(
-    //       'ID: ${data.id}, Purity: ${data.purity}, Flow Rate: ${data.flow}, Pressure: ${data.pressure}, Temperature: ${data.temp}, Serial No: ${data.serialNo}, DateTime: ${data.recordedAt}');
-    // }
+    List<OxyDatabaseData> storedData = await _db.getAllOxyData();
+    for (var data in storedData) {
+      print(
+          'ID: ${data.id}, Purity: ${data.purity}, Flow Rate: ${data.flow}, Pressure: ${data.pressure}, Temperature: ${data.temp}, Serial No: ${data.serialNo}, DateTime: ${data.recordedAt}');
+    }
 
     print('Stored Data: ${_cache.length}');
   }
 
   Future<void> storeAverageData() async {
-    print("hiiii");
-    if (purityList.isNotEmpty &&
-        flowRateList.isNotEmpty &&
-        pressureList.isNotEmpty &&
-        temperatureList.isNotEmpty) {
-      double averagePurity =
-          purityList.reduce((a, b) => a + b) / purityList.length;
-      double averageFlowRate =
-          flowRateList.reduce((a, b) => a + b) / flowRateList.length;
-      double averagePressure =
-          pressureList.reduce((a, b) => a + b) / pressureList.length;
-      double averageTemperature =
-          temperatureList.reduce((a, b) => a + b) / temperatureList.length;
+    String? serialNo = _serialNo;
+    DateTime dateTime = DateTime.now();
+    var url_1m = Uri.parse('http://192.168.4.1/getdata_1m');
+    try {
+      final response = await http.get(url_1m);
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
 
-      String? serialNo =
-          _serialNo; // You need to fetch the actual serial number
-      DateTime dateTime = DateTime.now();
+        if (data.isNotEmpty) {
+          Map<String, dynamic> jsonData = data[0];
+          double purity = double.tryParse(jsonData['Purity'] ?? '0.0')! / 10.0;
+          double flowRate =
+              double.tryParse(jsonData['Flow_Rate'] ?? '0.0')! / 10.0;
+          double pressure =
+              double.tryParse(jsonData['Pressure'] ?? '0.0')! / 10.0;
+          double temperature =
+              double.tryParse(jsonData['Temperature'] ?? '0.0')! / 10.0;
+          _serialNo = jsonData['serialNo'] ?? '';
 
-      final entity = OxyDatabaseCompanion(
-        purity: drift.Value(averagePurity),
-        flow: drift.Value(averageFlowRate),
-        pressure: drift.Value(averagePressure),
-        temp: drift.Value(averageTemperature),
-        serialNo: drift.Value(serialNo!),
-        recordedAt: drift.Value(dateTime),
-      );
-      // print(
-      //     'Print before store:  Purity: ${averagePurity}, Flow Rate: ${averageFlowRate}, Pressure: ${averagePressure}, Temperature: ${averageTemperature}, Serial No: ${serialNo!}, DateTime: ${dateTime}');
-      // await _db.insertOxyData(entity);
-      await printStoredData();
+          final entity = OxyDatabaseCompanion(
+            purity: drift.Value(purity),
+            flow: drift.Value(flowRate),
+            pressure: drift.Value(pressure),
+            temp: drift.Value(temperature),
+            serialNo: drift.Value(serialNo!),
+            recordedAt: drift.Value(dateTime),
+          );
 
-      // Clear the lists after storing data
-      purityList.clear();
-      flowRateList.clear();
-      pressureList.clear();
-      temperatureList.clear();
+          await _db.insertOxyData(entity);
+          printStoredData();
+          // Add data to stream controllers
+        }
+      } else {
+        throw Exception('Failed to load data');
+      }
+    } catch (e, stackTrace) {
+      print('Error parsing data: $e');
+      print("error=> $stackTrace");
+      // Handle the error appropriately
     }
-  }
-
-  void _showRemarkDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-          child: Container(
-            padding: EdgeInsets.all(12.0),
-            height: MediaQuery.of(context).size.height * 0.2,
-            width: MediaQuery.of(context).size.width * 0.9,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _remarkController,
-                                decoration: InputDecoration(
-                                  border: InputBorder.none,
-                                  hintText: 'Add Remarks...',
-                                ),
-                                maxLines: null,
-                                keyboardType: TextInputType.multiline,
-                              ),
-                            ),
-                            SizedBox(width: 10),
-                            TextButton(
-                              child: Text('Cancel'),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                            SizedBox(width: 10),
-                            ElevatedButton(
-                              child: Text('Submit'),
-                              onPressed: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => GraphReport(
-                                            data: _cache,
-                                            remark: _remarkController.text)));
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 

@@ -29,13 +29,23 @@ class AppDb extends _$AppDb {
   int get schemaVersion => 1;
 
   //Get the list of employee
-  // Future<int> insertOxyData(OxyDatabaseCompanion entity) {
-  //   return into(oxyDatabase).insert(entity);
-  // }
+  Future<int> insertOxyData(OxyDatabaseCompanion entity) {
+    return into(oxyDatabase).insert(entity);
+  }
 
-  // Future<List<OxyDatabaseData>> getAllOxyData() {
-  //   return select(oxyDatabase).get();
-  // }
+  Future<List<OxyDatabaseData>> getAllOxyData() {
+    return select(oxyDatabase).get();
+  }
+
+  Future<List<OxyDatabaseData>> getDataByDate(DateTime date) {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    return (select(oxyDatabase)
+          ..where((tbl) =>
+              tbl.recordedAt.isBiggerOrEqualValue(startOfDay) &
+              tbl.recordedAt.isSmallerOrEqualValue(endOfDay)))
+        .get();
+  }
 
   // Future<void> deleteAllData() async {
   //   await delete(oxyDatabase).go();

@@ -120,10 +120,9 @@ class _DashboardState extends State<Dashboard>
   // }
 
   Future<void> getSerialNo() async {
-    print("hii123");
     try {
       MinMaxData data = await ApiService.fetchMinMaxData();
-      print("data123->>>${data}");
+
       String newSerialNo = data.serialNo;
 
       setState(() {
@@ -134,20 +133,16 @@ class _DashboardState extends State<Dashboard>
           } else if (serialNo.startsWith('ODG')) {
             oxyDataTitle = 'OxyData -G';
           } else if (serialNo.startsWith('ODP')) {
-            print("ODP");
             oxyDataTitle = 'OxyData -P';
-            print("OxyData -P");
           }
 
           setState(() {
-            print("true123");
             checker = true;
           });
         }
       });
     } catch (e) {
       setState(() {
-        print("hii");
         checker = false;
       });
     }
