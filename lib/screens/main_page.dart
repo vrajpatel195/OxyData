@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:oxydata/screens/old_report_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../LimitSetting.dart/api_service.dart';
 import '../LimitSetting.dart/min_max_data.dart';
@@ -99,7 +100,7 @@ class _DashboardState extends State<Dashboard>
 
   void _startWifiCheckTimer() {
     // Check every 5 seconds
-    _wifiCheckTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
+    _wifiCheckTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
       await getSerialNo();
     });
   }
@@ -220,38 +221,82 @@ class _DashboardState extends State<Dashboard>
                           },
                         ),
                         SizedBox(height: 10),
-                        Text("Internet is not connected"),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(horizontal: 12.0),
+                        Text(
+                          "Internet is not connected",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        SizedBox(height: 10),
+                        Container(
+                          width: 185,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (_) => DemoWid()));
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue, // Background color
+                              foregroundColor: Colors.white, // Text color
+                              shadowColor: Colors.blueAccent, // Shadow color
+                              elevation: 10, // Shadow elevation
                               shape: RoundedRectangleBorder(
-                                side: BorderSide(
-                                    style: BorderStyle.solid,
-                                    color: Colors.black87),
-                                borderRadius:
-                                    BorderRadius.circular(5), // Square corners
+                                borderRadius: BorderRadius.circular(
+                                    10), // Rounded corners
                               ),
-                              minimumSize: Size(90,
-                                  25), // Set minimum size to maintain height
-                              backgroundColor:
-                                  Color.fromARGB(255, 192, 191, 191)),
-                          onPressed: () async {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => const DemoWid()));
-                          },
-                          child: const Text(
-                            'Demo Mode',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color.fromARGB(255, 0, 0, 0),
-                              shadows: [
-                                Shadow(
-                                  blurRadius: 4,
-                                  color: Colors.grey,
-                                  offset: Offset(2, 1.5),
-                                ),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10), // Button padding
+                              textStyle: TextStyle(
+                                fontSize: 20, // Font size
+                                fontWeight: FontWeight.bold, // Font weight
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.play_arrow, size: 24), // Icon
+                                SizedBox(
+                                    width: 10), // Space between icon and text
+                                Text('Demo Mode'), // Button text
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          width: 185,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => OldReportScreen()));
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue, // Background color
+                              foregroundColor: Colors.white, // Text color
+                              shadowColor: Colors.blueAccent, // Shadow color
+                              elevation: 10, // Shadow elevation
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                    10), // Rounded corners
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10), // Button padding
+                              textStyle: TextStyle(
+                                fontSize: 20, // Font size
+                                fontWeight: FontWeight.bold, // Font weight
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.picture_as_pdf, size: 24), // Icon
+                                SizedBox(
+                                    width: 10), // Space between icon and text
+                                Text('Report'), // Button text
                               ],
                             ),
                           ),

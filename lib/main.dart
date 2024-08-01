@@ -12,15 +12,17 @@ void _enablePlatformOverrideForDesktop() {
 }
 
 void main() {
+  final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations(
       [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
   _enablePlatformOverrideForDesktop();
-  runApp(const MyApp());
+  runApp( MyApp(routeObserver: routeObserver));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final RouteObserver<PageRoute> routeObserver;
+   MyApp({super.key, required this.routeObserver});
 
   // This widget is the root of your application.
   @override
@@ -33,6 +35,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: SplashScreen(),
+      navigatorObservers: [routeObserver],
     );
   }
 }

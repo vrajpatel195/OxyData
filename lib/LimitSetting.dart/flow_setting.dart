@@ -1,58 +1,59 @@
-// lib/o2_page.dart
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:oxydata/Database/db/app_db.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import 'min_max_data.dart';
-import 'purity_setting.dart';
+import 'package:drift/drift.dart' as drift;
 
 class FlowSetting extends StatefulWidget {
+  final int min;
+  final int max;
+
+  FlowSetting({required this.min, required this.max});
+
   @override
   _FlowSettingState createState() => _FlowSettingState();
 }
 
 class _FlowSettingState extends State<FlowSetting> {
-  late Future<MinMaxData> futureData;
   final _formKey = GlobalKey<FormState>();
-  MinMaxData? _data;
-
   Timer? _incrementTimer;
   Timer? _decrementTimer;
   bool _isLoading = false;
+  double flowmax = 0.0;
+  double flowmin = 0.0;
+  String? serialNo;
 
   @override
   void initState() {
     super.initState();
-    futureData = ApiService.fetchMinMaxData();
-  }
-
-  Future<void> _postData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await ApiService.postMinMaxData(_data!);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data posted successfully')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to post data: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    flowmax = widget.max / 10;
+    flowmin = widget.min / 10;
+    print("Valeu Of MinMAx  ==> F A  ${widget.max}");
   }
 
   Future<void> _saveToSharedPreferences() async {
+    final _db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('flowMax', _data!.flowMax);
-    await prefs.setString('flowMin', _data!.flowMin);
+    double max = double.parse(flowmax.toStringAsFixed(1));
+    double min = double.parse(flowmin.toStringAsFixed(1));
+
+    prefs.setDouble('flowMax', max);
+    prefs.setDouble('flowMin', min);
+
+    DateTime dateTime = DateTime.now();
+    serialNo = prefs.getString('serialNo') ?? "";
+    await _db.insertLimitSetting(LimitSettingsTableCompanion(
+      limit_max: drift.Value(max),
+      limit_min: drift.Value(min),
+      type: drift.Value("Flow"),
+      serialNo: drift.Value(serialNo!),
+      recordedAt: drift.Value(dateTime),
+    ));
+
+    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+    print("Storedddd data =>   $storedData");
   }
 
   @override
@@ -64,42 +65,42 @@ class _FlowSettingState extends State<FlowSetting> {
 
   void _incrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.flowMax) + 1;
-      if (newMax > int.parse(_data!.flowMin)) {
-        _data!.flowMax = newMax.toString();
+      double newMax = flowmax + 0.1;
+      if (newMax >= flowmin) {
+        flowmax = newMax;
       }
     });
   }
 
   void _decrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.flowMax) - 1;
-      if (newMax > int.parse(_data!.flowMin)) {
-        _data!.flowMax = newMax.toString();
+      double newMax = flowmax - 0.1;
+      if (newMax >= flowmin && newMax >= 0.0) {
+        flowmax = newMax;
       }
     });
   }
 
   void _incrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.flowMin) + 1;
-      if (newMin < int.parse(_data!.flowMax)) {
-        _data!.flowMin = newMin.toString();
+      double newMin = flowmin + 0.1;
+      if (newMin <= flowmax) {
+        flowmin = newMin;
       }
     });
   }
 
   void _decrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.flowMin) - 1;
-      if (newMin >= 0) {
-        _data!.flowMin = newMin.toString();
+      double newMin = flowmin - 0.1;
+      if (newMin <= flowmax && newMin >= 0.0) {
+        flowmin = newMin;
       }
     });
   }
 
   void _startIncrementTimer(VoidCallback callback) {
-    _incrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _incrementTimer = Timer.periodic(Duration(milliseconds: 120), (_) {
       callback();
     });
   }
@@ -109,7 +110,7 @@ class _FlowSettingState extends State<FlowSetting> {
   }
 
   void _startDecrementTimer(VoidCallback callback) {
-    _decrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _decrementTimer = Timer.periodic(Duration(milliseconds: 120), (_) {
       callback();
     });
   }
@@ -151,59 +152,61 @@ class _FlowSettingState extends State<FlowSetting> {
           ),
         ),
       ),
-      body: FutureBuilder<MinMaxData>(
-        future: futureData,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('${snapshot.error}'));
-          } else if (!snapshot.hasData) {
-            return Center(child: Text('No data available'));
-          } else {
-            _data = snapshot.data;
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    buildLimitCard('Flow Max', _data!.flowMax,
-                        _incrementMaxLimit, _decrementMaxLimit),
-                    SizedBox(height: 5),
-                    buildLimitCard('Flow Min', _data!.flowMin,
-                        _incrementMinLimit, _decrementMinLimit),
-                    SizedBox(height: 10),
-                    _isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: () async {
-                              if (_formKey.currentState!.validate()) {
-                                await ApiService.postMinMaxData(_data!);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content:
-                                          Text('Data posted successfully')),
-                                );
-                              }
-                              await _saveToSharedPreferences();
-                              Navigator.pop(context, 1);
-                            },
-                            child: Text('OK'),
-                          ),
-                  ],
-                ),
-              ),
-            );
-          }
-        },
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              buildLimitCard(
+                  'Flow Max', flowmax, _incrementMaxLimit, _decrementMaxLimit),
+              buildLimitCard(
+                  'Flow Min', flowmin, _incrementMinLimit, _decrementMinLimit),
+              _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: () async {
+                        await _saveToSharedPreferences();
+
+                        if (_formKey.currentState!.validate()) {
+                          try {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            await postStoredData();
+                            Navigator.pop(context, 1);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Data posted successfully')),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Failed to post data: $e')),
+                            );
+                          } finally {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
+                        }
+                      },
+                      child: Text('OK'),
+                    ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget buildLimitCard(String label, String initialValue,
+  Widget buildLimitCard(String label, double initialValue,
       VoidCallback increment, VoidCallback decrement) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -218,23 +221,25 @@ class _FlowSettingState extends State<FlowSetting> {
           onTapCancel: () {
             _stopIncrementTimer();
           },
-          child: Icon(Icons.remove, size: 40),
+          child: Icon(Icons.remove, size: screenHeight / 10),
         ),
         Container(
-          height: MediaQuery.of(context).size.height * 0.25,
-          width: 150,
+          height: screenHeight * 0.30,
+          width: screenWidth / 5,
           child: Card(
             color: Color.fromARGB(255, 248, 186, 40),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  initialValue,
-                  style: TextStyle(fontSize: 31, color: Colors.white),
+                  initialValue.toStringAsFixed(1),
+                  style: TextStyle(
+                      fontSize: screenWidth / 20, color: Colors.white),
                 ),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 10, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: screenWidth / 60, color: Colors.white),
                 ),
               ],
             ),
@@ -252,7 +257,7 @@ class _FlowSettingState extends State<FlowSetting> {
           onTapCancel: () {
             _stopDecrementTimer();
           },
-          child: Icon(Icons.add, size: 40),
+          child: Icon(Icons.add, size: screenHeight / 10),
         ),
       ],
     );

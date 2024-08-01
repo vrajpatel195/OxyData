@@ -2,57 +2,65 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../Database/db/app_db.dart';
 import 'api_service.dart';
-import 'min_max_data.dart';
-import 'purity_setting.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:drift/drift.dart' as drift;
 
 class TempSetting extends StatefulWidget {
+  final int min;
+  final int max;
+  TempSetting({required this.min, required this.max});
   @override
   _TempSettingState createState() => _TempSettingState();
 }
 
 class _TempSettingState extends State<TempSetting> {
-  late Future<MinMaxData> futureData;
   final _formKey = GlobalKey<FormState>();
-  MinMaxData? _data;
 
   Timer? _incrementTimer;
   Timer? _decrementTimer;
   bool _isLoading = false;
+  double tempMax = 0.0;
+  double tempMin = 0.0;
+  String? serialNo;
+  // Added this to track if data is loaded
 
   @override
   void initState() {
+    tempMax = widget.max / 10;
+    tempMin = widget.min / 10;
     super.initState();
-    futureData = ApiService.fetchMinMaxData();
-  }
-
-  Future<void> _postData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await ApiService.postMinMaxData(_data!);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data posted successfully')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to post data: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   Future<void> _saveToSharedPreferences() async {
+    final _db = await AppDbSingleton().database;
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('tempMax', _data!.temperatureMax);
-    await prefs.setString('tempMin', _data!.temperatureMin);
+
+    double max = double.parse(tempMax.toStringAsFixed(1));
+    double min = double.parse(tempMin.toStringAsFixed(1));
+    DateTime dateTime = DateTime.now();
+    prefs.setDouble('tempMax', max);
+    prefs.setDouble('tempMin', min);
+
+    serialNo = prefs.getString('serialNo') ?? "";
+    try {
+      await _db.insertLimitSetting(LimitSettingsTableCompanion(
+        limit_max: drift.Value(max),
+        limit_min: drift.Value(min),
+        type: drift.Value("Temperature"),
+        serialNo: drift.Value(serialNo!),
+        recordedAt: drift.Value(dateTime),
+      ));
+    } catch (e) {
+      print("Error on temp data --> $e");
+    }
+
+    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+    print("Storedddd data =>   $storedData");
   }
 
   @override
@@ -64,42 +72,42 @@ class _TempSettingState extends State<TempSetting> {
 
   void _incrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.temperatureMax) + 1;
-      if (newMax > int.parse(_data!.temperatureMin)) {
-        _data!.temperatureMax = newMax.toString();
+      double newMax = tempMax + 0.1;
+      if (newMax > tempMin) {
+        tempMax = newMax;
       }
     });
   }
 
   void _decrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.temperatureMax) - 1;
-      if (newMax > int.parse(_data!.temperatureMin)) {
-        _data!.temperatureMax = newMax.toString();
+      double newMax = tempMax - 0.1;
+      if (newMax > tempMin) {
+        tempMax = newMax;
       }
     });
   }
 
   void _incrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.temperatureMin) + 1;
-      if (newMin < int.parse(_data!.temperatureMax)) {
-        _data!.temperatureMin = newMin.toString();
+      double newMin = tempMin + 0.1;
+      if (newMin < tempMax) {
+        tempMin = newMin;
       }
     });
   }
 
   void _decrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.temperatureMin) - 1;
+      double newMin = tempMin - 0.1;
       if (newMin >= 0) {
-        _data!.temperatureMin = newMin.toString();
+        tempMin = newMin;
       }
     });
   }
 
   void _startIncrementTimer(VoidCallback callback) {
-    _incrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _incrementTimer = Timer.periodic(Duration(milliseconds: 100), (_) {
       callback();
     });
   }
@@ -109,7 +117,7 @@ class _TempSettingState extends State<TempSetting> {
   }
 
   void _startDecrementTimer(VoidCallback callback) {
-    _decrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _decrementTimer = Timer.periodic(Duration(milliseconds: 100), (_) {
       callback();
     });
   }
@@ -121,89 +129,90 @@ class _TempSettingState extends State<TempSetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(Icons.arrow_back_outlined),
-        ),
-        title: Center(
-          child: Column(
-            children: [
-              Text(
-                "Temp Limit Settings",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                "°C",
-                style: TextStyle(fontSize: 15),
-              ),
-            ],
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: Icon(Icons.arrow_back_outlined),
+          ),
+          title: Center(
+            child: Column(
+              children: [
+                Text(
+                  "Temp Limit Settings",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "°C",
+                  style: TextStyle(fontSize: 15),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Color.fromRGBO(255, 255, 255, 1),
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(4.0),
+            child: Container(
+              color: Colors.black,
+              height: 4.0,
+            ),
           ),
         ),
-        backgroundColor: Color.fromRGBO(255, 255, 255, 1),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(4.0),
-          child: Container(
-            color: Colors.black,
-            height: 4.0,
-          ),
-        ),
-      ),
-      body: FutureBuilder<MinMaxData>(
-        future: futureData,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('${snapshot.error}'));
-          } else if (!snapshot.hasData) {
-            return Center(child: Text('No data available'));
-          } else {
-            _data = snapshot.data;
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    buildLimitCard('temp Max', _data!.temperatureMax,
-                        _incrementMaxLimit, _decrementMaxLimit),
-                    SizedBox(height: 5),
-                    buildLimitCard('temp Min', _data!.temperatureMin,
-                        _incrementMinLimit, _decrementMinLimit),
-                    SizedBox(height: 10),
-                    _isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: () async {
-                              if (_formKey.currentState!.validate()) {
-                                await ApiService.postMinMaxData(_data!);
+        body: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  buildLimitCard('Temp Max', tempMax, _incrementMaxLimit,
+                      _decrementMaxLimit),
+                  buildLimitCard('Temp Min', tempMin, _incrementMinLimit,
+                      _decrementMinLimit),
+                  _isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: () async {
+                            await _saveToSharedPreferences();
+
+                            if (_formKey.currentState!.validate()) {
+                              try {
+                                setState(() {
+                                  _isLoading = true;
+                                });
+
+                                await postStoredData();
+                                Navigator.pop(context, 1);
+
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                       content:
                                           Text('Data posted successfully')),
                                 );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('Failed to post data: $e')),
+                                );
+                              } finally {
+                                setState(() {
+                                  _isLoading = false;
+                                });
                               }
-                              await _saveToSharedPreferences();
-                              Navigator.pop(context, 1);
-                            },
-                            child: Text('OK'),
-                          ),
-                  ],
-                ),
+                            }
+                          },
+                          child: Text('OK'),
+                        ),
+                ],
               ),
-            );
-          }
-        },
-      ),
-    );
+            )));
   }
 
-  Widget buildLimitCard(String label, String initialValue,
+  Widget buildLimitCard(String label, double initialValue,
       VoidCallback increment, VoidCallback decrement) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -218,23 +227,25 @@ class _TempSettingState extends State<TempSetting> {
           onTapCancel: () {
             _stopIncrementTimer();
           },
-          child: Icon(Icons.remove, size: 40),
+          child: Icon(Icons.remove, size: screenHeight / 10),
         ),
         Container(
-          height: MediaQuery.of(context).size.height * 0.25,
-          width: 150,
+          height: screenHeight * 0.30,
+          width: screenWidth / 5,
           child: Card(
-            color: Color.fromARGB(255, 4, 160, 84),
+            color: Color.fromARGB(255, 3, 161, 84),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  initialValue,
-                  style: TextStyle(fontSize: 31, color: Colors.white),
+                  initialValue.toStringAsFixed(1),
+                  style: TextStyle(
+                      fontSize: screenWidth / 20, color: Colors.white),
                 ),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 10, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: screenWidth / 60, color: Colors.white),
                 ),
               ],
             ),
@@ -252,7 +263,7 @@ class _TempSettingState extends State<TempSetting> {
           onTapCancel: () {
             _stopDecrementTimer();
           },
-          child: Icon(Icons.add, size: 40),
+          child: Icon(Icons.add, size: screenHeight / 10),
         ),
       ],
     );

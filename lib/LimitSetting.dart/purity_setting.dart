@@ -2,58 +2,64 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../Database/db/app_db.dart';
 import 'api_service.dart';
-import 'min_max_data.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
-import 'purity_setting.dart';
+
+import 'package:drift/drift.dart' as drift;
 
 class PuritySetting extends StatefulWidget {
+  final int min;
+  final int max;
+  PuritySetting({required this.min, required this.max});
   @override
   _PuritySettingState createState() => _PuritySettingState();
 }
 
 class _PuritySettingState extends State<PuritySetting> {
-  late Future<MinMaxData> futureData;
   final _formKey = GlobalKey<FormState>();
-  MinMaxData? _data;
 
   Timer? _incrementTimer;
   Timer? _decrementTimer;
   bool _isLoading = false;
+  double puritymax = 0.0;
+  double puritymin = 0.0;
+  String? serialNo;
 
   @override
   void initState() {
+    puritymax = widget.max / 10;
+    puritymin = widget.min / 10;
+
     super.initState();
-    futureData = ApiService.fetchMinMaxData();
-  }
-
-  Future<void> _postData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await ApiService.postMinMaxData(_data!);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data posted successfully')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to post data: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   Future<void> _saveToSharedPreferences() async {
+    final _db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
-    print("purity max--> ${_data!.o2Max}");
-    await prefs.setString('purityMax', _data!.o2Max);
-    await prefs.setString('purityMin', _data!.o2Min);
+
+    double max = double.parse(puritymax.toStringAsFixed(1));
+    double min = double.parse(puritymin.toStringAsFixed(1));
+    DateTime dateTime = DateTime.now();
+
+    prefs.setDouble('purityMax', max);
+    prefs.setDouble('purityMin', min);
+    serialNo = prefs.getString('serialNo') ?? "";
+    try {
+      await _db.insertLimitSetting(LimitSettingsTableCompanion(
+        limit_max: drift.Value(max),
+        limit_min: drift.Value(min),
+        type: drift.Value("Purity"),
+        serialNo: drift.Value(serialNo!),
+        recordedAt: drift.Value(dateTime),
+      ));
+    } catch (e) {
+      print("error in purity data--> $e");
+    }
+
+    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+    print("Storedddd data =>   $storedData");
   }
 
   @override
@@ -65,42 +71,42 @@ class _PuritySettingState extends State<PuritySetting> {
 
   void _incrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.o2Max) + 1;
-      if (newMax > int.parse(_data!.o2Min)) {
-        _data!.o2Max = newMax.toString();
+      double newMax = puritymax + 0.1;
+      if (newMax > puritymin) {
+        puritymax = newMax;
       }
     });
   }
 
   void _decrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.o2Max) - 1;
-      if (newMax > int.parse(_data!.o2Min)) {
-        _data!.o2Max = newMax.toString();
+      double newMax = puritymax - 0.1;
+      if (newMax > puritymin) {
+        puritymax = newMax;
       }
     });
   }
 
   void _incrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.o2Min) + 1;
-      if (newMin < int.parse(_data!.o2Max)) {
-        _data!.o2Min = newMin.toString();
+      double newMin = puritymin + 0.1;
+      if (newMin < puritymax) {
+        puritymin = newMin;
       }
     });
   }
 
   void _decrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.o2Min) - 1;
+      double newMin = puritymin - 0.1;
       if (newMin >= 0) {
-        _data!.o2Min = newMin.toString();
+        puritymin = newMin;
       }
     });
   }
 
   void _startIncrementTimer(VoidCallback callback) {
-    _incrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _incrementTimer = Timer.periodic(Duration(milliseconds: 10), (_) {
       callback();
     });
   }
@@ -110,7 +116,7 @@ class _PuritySettingState extends State<PuritySetting> {
   }
 
   void _startDecrementTimer(VoidCallback callback) {
-    _decrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _decrementTimer = Timer.periodic(Duration(milliseconds: 10), (_) {
       callback();
     });
   }
@@ -122,89 +128,95 @@ class _PuritySettingState extends State<PuritySetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(Icons.arrow_back_outlined),
-        ),
-        title: Center(
-          child: Column(
-            children: [
-              Text(
-                "Purity Limit Settings",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                "%",
-                style: TextStyle(fontSize: 15),
-              ),
-            ],
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: Icon(Icons.arrow_back_outlined),
+          ),
+          title: Center(
+            child: Column(
+              children: [
+                Text(
+                  "Purity Limit Settings",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "%",
+                  style: TextStyle(fontSize: 15),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Color.fromRGBO(255, 255, 255, 1),
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(4.0),
+            child: Container(
+              color: Colors.black,
+              height: 4.0,
+            ),
           ),
         ),
-        backgroundColor: Color.fromRGBO(255, 255, 255, 1),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(4.0),
-          child: Container(
-            color: Colors.black,
-            height: 4.0,
-          ),
-        ),
-      ),
-      body: FutureBuilder<MinMaxData>(
-        future: futureData,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('${snapshot.error}'));
-          } else if (!snapshot.hasData) {
-            return Center(child: Text('No data available'));
-          } else {
-            _data = snapshot.data;
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    buildLimitCard('Purity Max', _data!.o2Max,
-                        _incrementMaxLimit, _decrementMaxLimit),
-                    SizedBox(height: 5),
-                    buildLimitCard('Purity Min', _data!.o2Min,
-                        _incrementMinLimit, _decrementMinLimit),
-                    SizedBox(height: 10),
-                    _isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
+        body: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  buildLimitCard('Purity Max', puritymax, _incrementMaxLimit,
+                      _decrementMaxLimit),
+                  buildLimitCard('Purity Min', puritymin, _incrementMinLimit,
+                      _decrementMinLimit),
+                  _isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : Container(
+                          // width: MediaQuery.of(context).size.width / 8,
+                          // height: MediaQuery.of(context).size.height / 12,
+                          child: ElevatedButton(
                             onPressed: () async {
-                              if (_formKey.currentState!.validate()) {
-                                await ApiService.postMinMaxData(_data!);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content:
-                                          Text('Data posted successfully')),
-                                );
-                              }
                               await _saveToSharedPreferences();
-                              Navigator.pop(context, 1);
+
+                              if (_formKey.currentState!.validate()) {
+                                try {
+                                  setState(() {
+                                    _isLoading = true;
+                                  });
+
+                                  await postStoredData();
+                                  Navigator.pop(context, 1);
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text('Data posted successfully')),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text('Failed to post data: $e')),
+                                  );
+                                } finally {
+                                  setState(() {
+                                    _isLoading = false;
+                                  });
+                                }
+                              }
                             },
                             child: Text('OK'),
                           ),
-                  ],
-                ),
+                        ),
+                ],
               ),
-            );
-          }
-        },
-      ),
-    );
+            )));
   }
 
-  Widget buildLimitCard(String label, String initialValue,
+  Widget buildLimitCard(String label, double initialValue,
       VoidCallback increment, VoidCallback decrement) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -219,23 +231,25 @@ class _PuritySettingState extends State<PuritySetting> {
           onTapCancel: () {
             _stopIncrementTimer();
           },
-          child: Icon(Icons.remove, size: 40),
+          child: Icon(Icons.remove, size: screenHeight / 10),
         ),
         Container(
-          height: MediaQuery.of(context).size.height * 0.25,
-          width: 150,
+          height: screenHeight * 0.30,
+          width: screenWidth / 5,
           child: Card(
             color: const Color.fromARGB(255, 0, 34, 145),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  initialValue,
-                  style: TextStyle(fontSize: 31, color: Colors.white),
+                  initialValue.toStringAsFixed(1),
+                  style: TextStyle(
+                      fontSize: screenWidth / 20, color: Colors.white),
                 ),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 10, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: screenWidth / 60, color: Colors.white),
                 ),
               ],
             ),
@@ -253,7 +267,7 @@ class _PuritySettingState extends State<PuritySetting> {
           onTapCancel: () {
             _stopDecrementTimer();
           },
-          child: Icon(Icons.add, size: 40),
+          child: Icon(Icons.add, size: screenHeight / 10),
         ),
       ],
     );

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:oxydata/LimitSetting.dart/min_max_data.dart';
 import 'package:oxydata/Report_screens/daily_report.dart';
 import 'package:oxydata/Report_screens/monthly_report.dart';
 import 'package:oxydata/Report_screens/weekly_report.dart';
 import 'package:oxydata/Report_screens/current_report.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../LimitSetting.dart/api_service.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key, required this.data});
@@ -19,6 +23,11 @@ class _ReportScreenState extends State<ReportScreen> {
   DateTime now = DateTime.now();
   DateTime startDate = DateTime.now().subtract(Duration(days: 90));
   String? _selectedMonth;
+  late MinMaxData data;
+
+  void initState() {
+    super.initState();
+  }
 
   Future<void> _showMonthSelector(BuildContext context) async {
     List<String> months = [];
@@ -50,7 +59,7 @@ class _ReportScreenState extends State<ReportScreen> {
         );
       },
     );
-    _showRemarkDialog();
+    _showRemarkDialog(3);
   }
 
   Future<void> _selectDateAndCalculateWeek(BuildContext context) async {
@@ -78,7 +87,7 @@ class _ReportScreenState extends State<ReportScreen> {
         _weekRange = '$formattedStart to $formattedEnd';
       });
     }
-    _showRemarkDialog();
+    _showRemarkDialog(2);
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -93,7 +102,7 @@ class _ReportScreenState extends State<ReportScreen> {
         _selectedDate = picked;
       });
     }
-    _showRemarkDialog();
+    _showRemarkDialog(1);
   }
 
   @override
@@ -141,7 +150,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         ),
                       ),
                       onPressed: () {
-                        _showRemarkDialog();
+                        _showRemarkDialog(0);
                       },
                       child: Text('Current Report'),
                     ),
@@ -270,8 +279,9 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  void _showRemarkDialog() {
-    showDialog(
+  Future<void> _showRemarkDialog(int reportType) async {
+    print("Report Type: $reportType");
+    final result = await showDialog<int>(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
@@ -307,52 +317,14 @@ class _ReportScreenState extends State<ReportScreen> {
                             TextButton(
                               child: Text('Cancel'),
                               onPressed: () {
-                                Navigator.of(context).pop();
+                                Navigator.of(context).pop(null);
                               },
                             ),
                             SizedBox(width: 10),
                             ElevatedButton(
                               child: Text('Submit'),
                               onPressed: () {
-                                if (_selectedDate != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => DailyReport(
-                                        selectedDate: _selectedDate,
-                                        remark: _remarkController.text,
-                                      ),
-                                    ),
-                                  );
-                                } else if (_weekRange != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => WeeklyReport(
-                                        weekRange: _weekRange,
-                                      ),
-                                    ),
-                                  );
-                                } else if (_selectedMonth != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => MonthlyReport(
-                                        selectedMonth: _selectedMonth,
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => GraphReport(
-                                        data: widget.data,
-                                        remark: _remarkController.text,
-                                      ),
-                                    ),
-                                  );
-                                }
+                                Navigator.of(context).pop(reportType);
                               },
                             ),
                           ],
@@ -367,5 +339,72 @@ class _ReportScreenState extends State<ReportScreen> {
         );
       },
     );
+
+    if (result != null) {
+      if (result == 1) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DailyReport(
+              selectedDate: _selectedDate,
+              remark: _remarkController.text,
+            ),
+          ),
+        ).then((_) {
+          // Refresh the screen when coming back from DailyReport
+          setState(() {
+            _remarkController.clear();
+            _selectedDate = null;
+          });
+        });
+      } else if (result == 2) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WeeklyReport(
+              weekRange: _weekRange,
+              remark: _remarkController.text,
+            ),
+          ),
+        ).then((_) {
+          // Refresh the screen when coming back from WeeklyReport
+          setState(() {
+            _remarkController.clear();
+            _weekRange = null;
+          });
+        });
+      } else if (result == 3) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MonthlyReport(
+              selectedMonth: _selectedMonth,
+              remark: _remarkController.text,
+            ),
+          ),
+        ).then((_) {
+          // Refresh the screen when coming back from MonthlyReport
+          setState(() {
+            _remarkController.clear();
+            _selectedMonth = null;
+          });
+        });
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GraphReport(
+              data: widget.data,
+              remark: _remarkController.text,
+            ),
+          ),
+        ).then((_) {
+          // Refresh the screen when coming back from GraphReport
+          setState(() {
+            _remarkController.clear();
+          });
+        });
+      }
+    }
   }
 }

@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -7,10 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
+
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../Database/db/app_db.dart';
+
 import '../widgets/generate_report.dart';
 
 class DailyReport extends StatefulWidget {
@@ -23,20 +23,25 @@ class DailyReport extends StatefulWidget {
 
 class _DailyReportState extends State<DailyReport> {
   late List<Map<String, dynamic>> _dataPoints;
+  late List<Map<String, dynamic>> _dataLimits;
+  //late List<Map<String, dynamic>> _dataAlarms;
   late DateTime _selectedDate;
   final GlobalKey _chartKey = GlobalKey();
-  final AppDb _database = AppDb();
+
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = widget.selectedDate!;
+
     _getDailyData();
+    _getDailyLimitData();
   }
 
   void _getDailyData() async {
-    List<OxyDatabaseData> dbData = await _database.getDataByDate(_selectedDate);
+    final _db = await AppDbSingleton().database;
+    List<OxyDatabaseData> dbData = await _db.getDataByDate(_selectedDate);
     setState(() {
       _dataPoints = dbData
           .map((data) => {
@@ -48,7 +53,37 @@ class _DailyReportState extends State<DailyReport> {
               })
           .toList();
     });
+
+    final latestData =
+        await _db.getLatestLimitSettingsForAllTypesBeforeDate(_selectedDate);
+
+    for (String type in ['Purity', 'Pressure', 'Temp', 'Flow']) {
+      final data = latestData[type];
+      if (data != null) {
+        print("Latest $type Data before $_selectedDate: ${data.limit_max}");
+      } else {
+        print("No $type data found before $_selectedDate.");
+      }
+    }
   }
+
+  void _getDailyLimitData() async {
+    final _db = await AppDbSingleton().database;
+    List<LimitSettingsTableData> dbData =
+        await _db.getLimitSettingsByDate(_selectedDate);
+    setState(() {
+      _dataLimits = dbData
+          .map((data) => {
+                'timestamp': data.recordedAt!,
+                'limit_max': data.limit_max,
+                'limit_min': data.limit_min,
+                'type': data.type,
+              })
+          .toList();
+    });
+  }
+
+  void _getDailyAlarmData() async {}
 
   @override
   Widget build(BuildContext context) {
@@ -59,207 +94,220 @@ class _DailyReportState extends State<DailyReport> {
         _selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59);
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            icon: Icon(Icons.arrow_back)),
         title: Text('Daily Report'),
         actions: [
           Text("Selected Date: $date"),
           SizedBox(
             width: 15,
           ),
-          ElevatedButton(
-            onPressed: () {
-              _generatePdfAfterRender();
-            },
-            child: _isLoading ? CircularProgressIndicator() : Text("Report"),
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
+          if (_dataPoints.isNotEmpty)
+            ElevatedButton(
+              onPressed: () {
+                _generatePdfAfterRender();
+              },
+              child: _isLoading ? CircularProgressIndicator() : Text("Report"),
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
               ),
             ),
-          ),
         ],
       ),
       body: RepaintBoundary(
         key: _chartKey,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Container(
-                height: MediaQuery.of(context).size.height * 0.80,
-                width: MediaQuery.of(context).size.width * 0.80,
-                child: SfCartesianChart(
-                  primaryXAxis: DateTimeAxis(
-                    intervalType: DateTimeIntervalType.hours,
-                    interval: 3,
-                    dateFormat: DateFormat.Hm(),
-                    minimum: startOfDay,
-                    maximum: endOfDay,
-                    edgeLabelPlacement: EdgeLabelPlacement.shift,
-                    rangePadding: ChartRangePadding.none,
-                    labelStyle: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                    majorGridLines: MajorGridLines(
-                      color: Colors.black,
-                      width: 1,
-                    ),
-                    axisLine: AxisLine(
-                      color: Colors.black,
-                      width: 2,
-                    ),
-                  ),
-                  primaryYAxis: const NumericAxis(
-                    name: 'primaryYAxis1',
-                    minimum: 0,
-                    maximum: 100,
-                    interval: 20,
-                    labelStyle: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                    majorGridLines: MajorGridLines(
-                      color: Colors.black,
-                      width: 1,
-                    ),
-                    axisLine: AxisLine(
-                      color: Colors.black,
-                      width: 2,
-                    ),
-                  ),
-                  axes: const <ChartAxis>[
-                    NumericAxis(
-                      name: 'spacerYAxis',
-                      opposedPosition: false,
-                      minimum: 0,
-                      maximum: 10,
-                      interval: 2,
-                      labelStyle: TextStyle(
-                        color: Colors.transparent,
-                      ),
-                      majorGridLines: MajorGridLines(
-                        color: Colors.transparent,
-                      ),
-                      axisLine: AxisLine(
-                        color: Colors.transparent,
-                      ),
-                    ),
-                    NumericAxis(
-                      name: 'primaryYAxis2',
-                      opposedPosition: false,
-                      minimum: 0,
-                      maximum: 20,
-                      interval: 4,
-                      labelStyle: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                      majorGridLines: MajorGridLines(
-                        color: Colors.black,
-                        width: 1,
-                      ),
-                    ),
-                    NumericAxis(
-                      name: 'secondaryYAxis1',
-                      opposedPosition: true,
-                      minimum: 0,
-                      maximum: 100,
-                      interval: 20,
-                      labelStyle: TextStyle(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                      majorGridLines: MajorGridLines(
-                        color: Colors.black,
-                        width: 1,
-                      ),
-                      axisLine: AxisLine(
-                        color: Colors.black,
-                        width: 2,
-                      ),
-                    ),
-                    NumericAxis(
-                      name: 'spacerYAxis1',
-                      opposedPosition: true,
-                      minimum: 0,
-                      maximum: 10,
-                      interval: 2,
-                      labelStyle: TextStyle(
-                        color: Colors.transparent,
-                      ),
-                      majorGridLines: MajorGridLines(
-                        color: Colors.transparent,
-                      ),
-                      axisLine: AxisLine(
-                        color: Colors.transparent,
-                      ),
-                    ),
-                    NumericAxis(
-                      name: 'secondaryYAxis2',
-                      opposedPosition: true,
-                      minimum: 0,
-                      maximum: 50,
-                      interval: 10,
-                      labelStyle: TextStyle(
-                          color: Colors.green,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                      majorGridLines: MajorGridLines(
-                        color: Colors.black,
-                        width: 1,
-                      ),
-                    ),
-                  ],
-                  series: <LineSeries<Map<String, dynamic>, DateTime>>[
-                    LineSeries<Map<String, dynamic>, DateTime>(
-                      dataSource: _dataPoints,
-                      xValueMapper: (Map<String, dynamic> data, _) =>
-                          data['timestamp'] as DateTime,
-                      yValueMapper: (Map<String, dynamic> data, _) =>
-                          data['purity'] as double,
-                      name: 'Purity',
-                      color: Colors.black,
-                      yAxisName: 'primaryYAxis1',
-                    ),
-                    LineSeries<Map<String, dynamic>, DateTime>(
-                      dataSource: _dataPoints,
-                      xValueMapper: (Map<String, dynamic> data, _) =>
-                          data['timestamp'] as DateTime,
-                      yValueMapper: (Map<String, dynamic> data, _) =>
-                          data['flowRate'] as double,
-                      name: 'Flow Rate',
-                      yAxisName: 'primaryYAxis2',
-                      color: Colors.blue,
-                    ),
-                    LineSeries<Map<String, dynamic>, DateTime>(
-                      dataSource: _dataPoints,
-                      xValueMapper: (Map<String, dynamic> data, _) =>
-                          data['timestamp'] as DateTime,
-                      yValueMapper: (Map<String, dynamic> data, _) =>
-                          data['pressure'] as double,
-                      name: 'Pressure',
-                      yAxisName: 'secondaryYAxis1',
-                      color: Colors.red,
-                    ),
-                    LineSeries<Map<String, dynamic>, DateTime>(
-                      dataSource: _dataPoints,
-                      xValueMapper: (Map<String, dynamic> data, _) =>
-                          data['timestamp'] as DateTime,
-                      yValueMapper: (Map<String, dynamic> data, _) =>
-                          data['temperature'] as double,
-                      name: 'Temperature',
-                      yAxisName: 'secondaryYAxis2',
-                      color: Colors.green,
-                    ),
-                  ],
-                  legend: Legend(isVisible: true),
-                  tooltipBehavior: TooltipBehavior(enable: true),
+        child: _dataPoints.isEmpty
+            ? Center(
+                child: Text(
+                  "No data found!     ($date)",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: MediaQuery.of(context).size.height * 0.80,
+                      width: MediaQuery.of(context).size.width * 0.80,
+                      child: SfCartesianChart(
+                        primaryXAxis: DateTimeAxis(
+                          intervalType: DateTimeIntervalType.hours,
+                          interval: 3,
+                          dateFormat: DateFormat.Hm(),
+                          minimum: startOfDay,
+                          maximum: endOfDay,
+                          edgeLabelPlacement: EdgeLabelPlacement.shift,
+                          rangePadding: ChartRangePadding.none,
+                          labelStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                          majorGridLines: MajorGridLines(
+                            color: Colors.black,
+                            width: 1,
+                          ),
+                          axisLine: AxisLine(
+                            color: Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                        primaryYAxis: const NumericAxis(
+                          name: 'primaryYAxis1',
+                          minimum: 0,
+                          maximum: 100,
+                          interval: 20,
+                          labelStyle: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                          majorGridLines: MajorGridLines(
+                            color: Colors.black,
+                            width: 1,
+                          ),
+                          axisLine: AxisLine(
+                            color: Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                        axes: const <ChartAxis>[
+                          NumericAxis(
+                            name: 'spacerYAxis',
+                            opposedPosition: false,
+                            minimum: 0,
+                            maximum: 10,
+                            interval: 2,
+                            labelStyle: TextStyle(
+                              color: Colors.transparent,
+                            ),
+                            majorGridLines: MajorGridLines(
+                              color: Colors.transparent,
+                            ),
+                            axisLine: AxisLine(
+                              color: Colors.transparent,
+                            ),
+                          ),
+                          NumericAxis(
+                            name: 'primaryYAxis2',
+                            opposedPosition: false,
+                            minimum: 0,
+                            maximum: 20,
+                            interval: 4,
+                            labelStyle: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                            majorGridLines: MajorGridLines(
+                              color: Colors.black,
+                              width: 1,
+                            ),
+                          ),
+                          NumericAxis(
+                            name: 'secondaryYAxis1',
+                            opposedPosition: true,
+                            minimum: 0,
+                            maximum: 100,
+                            interval: 20,
+                            labelStyle: TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                            majorGridLines: MajorGridLines(
+                              color: Colors.black,
+                              width: 1,
+                            ),
+                            axisLine: AxisLine(
+                              color: Colors.black,
+                              width: 2,
+                            ),
+                          ),
+                          NumericAxis(
+                            name: 'spacerYAxis1',
+                            opposedPosition: true,
+                            minimum: 0,
+                            maximum: 10,
+                            interval: 2,
+                            labelStyle: TextStyle(
+                              color: Colors.transparent,
+                            ),
+                            majorGridLines: MajorGridLines(
+                              color: Colors.transparent,
+                            ),
+                            axisLine: AxisLine(
+                              color: Colors.transparent,
+                            ),
+                          ),
+                          NumericAxis(
+                            name: 'secondaryYAxis2',
+                            opposedPosition: true,
+                            minimum: 0,
+                            maximum: 50,
+                            interval: 10,
+                            labelStyle: TextStyle(
+                                color: Colors.green,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                            majorGridLines: MajorGridLines(
+                              color: Colors.black,
+                              width: 1,
+                            ),
+                          ),
+                        ],
+                        series: <LineSeries<Map<String, dynamic>, DateTime>>[
+                          LineSeries<Map<String, dynamic>, DateTime>(
+                            dataSource: _dataPoints,
+                            xValueMapper: (Map<String, dynamic> data, _) =>
+                                data['timestamp'] as DateTime,
+                            yValueMapper: (Map<String, dynamic> data, _) =>
+                                data['purity'] as double,
+                            name: 'Purity',
+                            color: Colors.black,
+                            yAxisName: 'primaryYAxis1',
+                          ),
+                          LineSeries<Map<String, dynamic>, DateTime>(
+                            dataSource: _dataPoints,
+                            xValueMapper: (Map<String, dynamic> data, _) =>
+                                data['timestamp'] as DateTime,
+                            yValueMapper: (Map<String, dynamic> data, _) =>
+                                data['flowRate'] as double,
+                            name: 'Flow Rate',
+                            yAxisName: 'primaryYAxis2',
+                            color: Colors.blue,
+                          ),
+                          LineSeries<Map<String, dynamic>, DateTime>(
+                            dataSource: _dataPoints,
+                            xValueMapper: (Map<String, dynamic> data, _) =>
+                                data['timestamp'] as DateTime,
+                            yValueMapper: (Map<String, dynamic> data, _) =>
+                                data['pressure'] as double,
+                            name: 'Pressure',
+                            yAxisName: 'secondaryYAxis1',
+                            color: Colors.red,
+                          ),
+                          LineSeries<Map<String, dynamic>, DateTime>(
+                            dataSource: _dataPoints,
+                            xValueMapper: (Map<String, dynamic> data, _) =>
+                                data['timestamp'] as DateTime,
+                            yValueMapper: (Map<String, dynamic> data, _) =>
+                                data['temperature'] as double,
+                            name: 'Temperature',
+                            yAxisName: 'secondaryYAxis2',
+                            color: Colors.green,
+                          ),
+                        ],
+                        legend: Legend(isVisible: true),
+                        tooltipBehavior: TooltipBehavior(enable: true),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -272,7 +320,8 @@ class _DailyReportState extends State<DailyReport> {
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         final Uint8List chartImage = await _captureChart();
         try {
-          await GenerateReport(data: _dataPoints, title: "Daily")
+          await GenerateReport(
+                  data: _dataPoints, dataLimit: _dataLimits, title: "Daily")
               .generateReportPdf(chartImage, widget.remark,
                   selectDate: _selectedDate);
           ScaffoldMessenger.of(context).showSnackBar(

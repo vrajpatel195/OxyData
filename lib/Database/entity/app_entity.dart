@@ -7,6 +7,7 @@ class OxyDatabase extends Table {
   RealColumn get flow => real().named('flow')();
   RealColumn get pressure => real().named('pressure')();
   RealColumn get temp => real().named('temp')();
+
   TextColumn get serialNo => text().named('serialNo')();
-  DateTimeColumn get recordedAt => dateTime().nullable()();
+  DateTimeColumn get recordedAt => dateTime().nullable().named('recorded_at')();
 }

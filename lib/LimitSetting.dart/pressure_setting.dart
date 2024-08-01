@@ -1,58 +1,67 @@
-// lib/o2_page.dart
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:oxydata/Database/db/app_db.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
-import 'min_max_data.dart';
-import 'purity_setting.dart';
+
+import 'package:drift/drift.dart' as drift;
 
 class PressureSetting extends StatefulWidget {
+  final int min;
+  final int max;
+  PressureSetting({required this.min, required this.max});
   @override
   _PressureSettingState createState() => _PressureSettingState();
 }
 
 class _PressureSettingState extends State<PressureSetting> {
-  late Future<MinMaxData> futureData;
   final _formKey = GlobalKey<FormState>();
-  MinMaxData? _data;
 
   Timer? _incrementTimer;
   Timer? _decrementTimer;
   bool _isLoading = false;
+  double pressuremax = 0.0;
+  double pressuremin = 0.0;
+  String? serialNo;
+  // Added this to track if data is loaded
 
   @override
   void initState() {
+    pressuremax = widget.max / 10;
+    pressuremin = widget.min / 10;
+
     super.initState();
-    futureData = ApiService.fetchMinMaxData();
-  }
-
-  Future<void> _postData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await ApiService.postMinMaxData(_data!);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data posted successfully')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to post data: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   Future<void> _saveToSharedPreferences() async {
+    final _db = await AppDbSingleton().database;
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('pressureMax', _data!.pressureMax);
-    await prefs.setString('pressureMin', _data!.pressureMin);
+
+    double max = double.parse(pressuremax.toStringAsFixed(1));
+    double min = double.parse(pressuremin.toStringAsFixed(1));
+
+    prefs.setDouble('pressureMax', max);
+    prefs.setDouble('pressureMin', min);
+
+    DateTime dateTime = DateTime.now();
+    serialNo = prefs.getString('serialNo') ?? "";
+    print("Heloooooooo");
+    try {
+      await _db.insertLimitSetting(LimitSettingsTableCompanion(
+        limit_max: drift.Value(max),
+        limit_min: drift.Value(min),
+        type: drift.Value("Pressure"),
+        serialNo: drift.Value(serialNo!),
+        recordedAt: drift.Value(dateTime),
+      ));
+    } catch (e) {
+      print("Error pressure max --> $e");
+    }
+
+    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+    print("Storedddd data =>   $storedData");
   }
 
   @override
@@ -64,42 +73,42 @@ class _PressureSettingState extends State<PressureSetting> {
 
   void _incrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.pressureMax) + 1;
-      if (newMax > int.parse(_data!.pressureMin)) {
-        _data!.pressureMax = newMax.toString();
+      double newMax = pressuremax + 0.1;
+      if (newMax > pressuremin) {
+        pressuremax = newMax;
       }
     });
   }
 
   void _decrementMaxLimit() {
     setState(() {
-      int newMax = int.parse(_data!.pressureMax) - 1;
-      if (newMax > int.parse(_data!.pressureMin)) {
-        _data!.pressureMax = newMax.toString();
+      double newMax = pressuremax - 0.1;
+      if (newMax > pressuremin) {
+        pressuremax = newMax;
       }
     });
   }
 
   void _incrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.pressureMin) + 1;
-      if (newMin < int.parse(_data!.pressureMax)) {
-        _data!.pressureMin = newMin.toString();
+      double newMin = pressuremin + 0.1;
+      if (newMin < pressuremax) {
+        pressuremin = newMin;
       }
     });
   }
 
   void _decrementMinLimit() {
     setState(() {
-      int newMin = int.parse(_data!.pressureMin) - 1;
+      double newMin = pressuremin - 0.1;
       if (newMin >= 0) {
-        _data!.pressureMin = newMin.toString();
+        pressuremin = newMin;
       }
     });
   }
 
   void _startIncrementTimer(VoidCallback callback) {
-    _incrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _incrementTimer = Timer.periodic(Duration(milliseconds: 120), (_) {
       callback();
     });
   }
@@ -109,7 +118,7 @@ class _PressureSettingState extends State<PressureSetting> {
   }
 
   void _startDecrementTimer(VoidCallback callback) {
-    _decrementTimer = Timer.periodic(Duration(milliseconds: 150), (_) {
+    _decrementTimer = Timer.periodic(Duration(milliseconds: 120), (_) {
       callback();
     });
   }
@@ -121,89 +130,90 @@ class _PressureSettingState extends State<PressureSetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(Icons.arrow_back_outlined),
-        ),
-        title: Center(
-          child: Column(
-            children: [
-              Text(
-                "Pressure Limit Settings",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                "PSI",
-                style: TextStyle(fontSize: 15),
-              ),
-            ],
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context, 1);
+            },
+            icon: Icon(Icons.arrow_back_outlined),
+          ),
+          title: Center(
+            child: Column(
+              children: [
+                Text(
+                  "Pressure Limit Settings",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "PSI",
+                  style: TextStyle(fontSize: 15),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Color.fromRGBO(255, 255, 255, 1),
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(4.0),
+            child: Container(
+              color: Colors.black,
+              height: 4.0,
+            ),
           ),
         ),
-        backgroundColor: Color.fromRGBO(255, 255, 255, 1),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(4.0),
-          child: Container(
-            color: Colors.black,
-            height: 4.0,
-          ),
-        ),
-      ),
-      body: FutureBuilder<MinMaxData>(
-        future: futureData,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('${snapshot.error}'));
-          } else if (!snapshot.hasData) {
-            return Center(child: Text('No data available'));
-          } else {
-            _data = snapshot.data;
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    buildLimitCard('Pressure Max', _data!.pressureMax,
-                        _incrementMaxLimit, _decrementMaxLimit),
-                    SizedBox(height: 5),
-                    buildLimitCard('Pressure Min', _data!.pressureMin,
-                        _incrementMinLimit, _decrementMinLimit),
-                    SizedBox(height: 10),
-                    _isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: () async {
-                              if (_formKey.currentState!.validate()) {
-                                await ApiService.postMinMaxData(_data!);
+        body: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  buildLimitCard('Pressure Max', pressuremax,
+                      _incrementMaxLimit, _decrementMaxLimit),
+                  buildLimitCard('Pressure Min', pressuremin,
+                      _incrementMinLimit, _decrementMinLimit),
+                  _isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: () async {
+                            await _saveToSharedPreferences();
+
+                            if (_formKey.currentState!.validate()) {
+                              try {
+                                setState(() {
+                                  _isLoading = true;
+                                });
+
+                                await postStoredData();
+                                Navigator.pop(context, 1);
+
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                       content:
                                           Text('Data posted successfully')),
                                 );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('Failed to post data: $e')),
+                                );
+                              } finally {
+                                setState(() {
+                                  _isLoading = false;
+                                });
                               }
-                              await _saveToSharedPreferences();
-                              Navigator.pop(context, 1);
-                            },
-                            child: Text('OK'),
-                          ),
-                  ],
-                ),
+                            }
+                          },
+                          child: Text('OK'),
+                        ),
+                ],
               ),
-            );
-          }
-        },
-      ),
-    );
+            )));
   }
 
-  Widget buildLimitCard(String label, String initialValue,
+  Widget buildLimitCard(String label, double initialValue,
       VoidCallback increment, VoidCallback decrement) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -218,23 +228,25 @@ class _PressureSettingState extends State<PressureSetting> {
           onTapCancel: () {
             _stopIncrementTimer();
           },
-          child: Icon(Icons.remove, size: 40),
+          child: Icon(Icons.remove, size: screenHeight / 10),
         ),
         Container(
-          height: MediaQuery.of(context).size.height * 0.25,
-          width: 150,
+          height: screenHeight * 0.30,
+          width: screenWidth / 5,
           child: Card(
             color: const Color.fromARGB(255, 195, 0, 0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  initialValue,
-                  style: TextStyle(fontSize: 31, color: Colors.white),
+                  initialValue.toStringAsFixed(1),
+                  style: TextStyle(
+                      fontSize: screenWidth / 20, color: Colors.white),
                 ),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 10, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: screenWidth / 60, color: Colors.white),
                 ),
               ],
             ),
@@ -252,7 +264,7 @@ class _PressureSettingState extends State<PressureSetting> {
           onTapCancel: () {
             _stopDecrementTimer();
           },
-          child: Icon(Icons.add, size: 40),
+          child: Icon(Icons.add, size: screenHeight / 10),
         ),
       ],
     );
