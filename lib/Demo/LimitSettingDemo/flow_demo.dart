@@ -1,46 +1,51 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:oxydata/Demo/demo.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
-class PurityDemo extends StatefulWidget {
-  const PurityDemo({super.key});
+class FlowDemo extends StatefulWidget {
+  const FlowDemo({super.key});
 
   @override
-  State<PurityDemo> createState() => _PurityState();
+  State<FlowDemo> createState() => _FlowDemoState();
 }
 
-class _PurityState extends State<PurityDemo> {
-  int maxLimit = 60;
-  int minLimit = 0;
+class _FlowDemoState extends State<FlowDemo> {
+  double maxLimit = 0;
+  double minLimit = 0;
   Timer? _timer;
 
   @override
   void initState() {
     loadData();
+    // TODO: implement initState
     super.initState();
   }
 
   void loadData() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+
     setState(() {
-      maxLimit = prefs.getInt('Purity_maxLimit') ?? 60;
-      minLimit = prefs.getInt('Purity_minLimit') ?? 0;
+      maxLimit = prefs.getDouble('Flow_maxLimit') ?? 0;
+      minLimit = prefs.getDouble('Flow_minLimit') ?? 0;
     });
   }
 
   void updateMaxLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toInt() + 1;
-      prefs.setInt('Purity_maxLimit', maxLimit);
+      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toDouble() + 1.0;
+      prefs.setDouble('Flow_maxLimit', maxLimit);
     });
   }
 
   void updateMinLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toInt();
-      prefs.setInt('Purity_minLimit', minLimit);
+      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toDouble();
+      prefs.setDouble('Flow_minLimit', minLimit);
     });
   }
 
@@ -66,31 +71,30 @@ class _PurityState extends State<PurityDemo> {
       backgroundColor: Color.fromRGBO(255, 255, 255, 1),
       appBar: AppBar(
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(Icons.arrow_back_outlined),
-        ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: Icon(Icons.arrow_back_outlined)),
         title: Center(
           child: Column(
             children: [
               Text(
-                "Purity Limit Settings",
+                "Flow Limit Settings",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(
-                "%",
+                "LPM",
                 style: TextStyle(fontSize: 15),
-              ),
+              )
             ],
           ),
         ),
         backgroundColor: Color.fromRGBO(255, 255, 255, 1),
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(4.0),
+          preferredSize: Size.fromHeight(4.0), // Adjust the height as needed
           child: Container(
-            color: Colors.black,
-            height: 4.0,
+            color: Colors.black, // Change this to the desired border color
+            height: 4.0, // Height of the bottom border
           ),
         ),
       ),
@@ -101,6 +105,8 @@ class _PurityState extends State<PurityDemo> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Text("O2", style: TextStyle(fontSize: 20)),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -122,23 +128,22 @@ class _PurityState extends State<PurityDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: const Color.fromARGB(255, 0, 34, 145),
+                      color: Color.fromARGB(255, 248, 186, 40),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '$maxLimit',
+                            '${maxLimit}',
                             style: TextStyle(fontSize: 31, color: Colors.white),
                           ),
                           Text(
                             "Maximum Limit",
                             style: TextStyle(fontSize: 10, color: Colors.white),
-                          ),
+                          )
                         ],
                       ),
                       margin: EdgeInsets.all(10),
                     ),
-                  ),
+                  ), //${product.minLimit}
                   GestureDetector(
                     onTap: () {
                       updateMaxLimit(maxLimit.toDouble() + 1.0);
@@ -176,23 +181,22 @@ class _PurityState extends State<PurityDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: const Color.fromARGB(255, 0, 34, 145),
+                      color: Color.fromARGB(255, 248, 186, 40),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '$minLimit',
+                            '${minLimit}',
                             style: TextStyle(fontSize: 31, color: Colors.white),
                           ),
                           Text(
                             "Minimum Limit",
                             style: TextStyle(fontSize: 10, color: Colors.white),
-                          ),
+                          )
                         ],
                       ),
                       margin: EdgeInsets.all(10),
                     ),
-                  ),
+                  ), //${product.maxLimit}
                   GestureDetector(
                     onTap: () {
                       updateMinLimit(minLimit.toDouble() + 1.0);

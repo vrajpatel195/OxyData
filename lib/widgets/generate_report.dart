@@ -7,6 +7,7 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../LimitSetting.dart/api_service.dart';
@@ -16,9 +17,15 @@ class GenerateReport {
   final List<Map<String, dynamic>> data;
   final String title;
   final List<Map<String, dynamic>> dataLimit;
+  final List<Map<String, dynamic>> datainitialLimit;
+  final List<Map<String, dynamic>> dataAlarms;
 
   GenerateReport(
-      {required this.data, required this.dataLimit, required this.title});
+      {required this.data,
+      required this.dataLimit,
+      required this.title,
+      required this.datainitialLimit,
+      required this.dataAlarms});
 
   String _currentDateTime = _formatDateTime(DateTime.now());
   late double _minPurity = 0.0;
@@ -80,7 +87,8 @@ class GenerateReport {
             data.length;
   }
 
-  Future<void> generateReportPdf(Uint8List chartImage, String remark,
+  Future<void> generateReportPdf(
+      BuildContext context, Uint8List chartImage, String remark,
       {DateTime? selectDate,
       DateTime? weekStartDate,
       DateTime? weekEndDate}) async {
@@ -137,8 +145,7 @@ class GenerateReport {
     }
 
     final headers = ['DateTime', 'Limit Max', 'Limit Min', 'Type'];
-
-    final dataRows = dataLimit.map((data) {
+    final dataRows1 = datainitialLimit.map((data) {
       return [
         data['timestamp'].toString(), // DateTime
         data['limit_max'].toString(), // Limit Max
@@ -147,6 +154,39 @@ class GenerateReport {
       ];
     }).toList();
 
+    final dataRows2 = dataLimit.map((data) {
+      return [
+        data['timestamp'].toString(), // DateTime
+        data['limit_max'].toString(), // Limit Max
+        data['limit_min'].toString(), // Limit Min
+        data['type'].toString(), // Type
+      ];
+    }).toList();
+
+    final combinedDataRows = [...dataRows1, ...dataRows2];
+
+    final alarmHeaders = [
+      'DateTime',
+      'Limit Max',
+      'Limit Min',
+      'Alarms',
+      'Type'
+    ];
+    final dataAlarmsRow = dataAlarms.map((data) {
+      return [
+        data['timestamp'].toString(), // DateTime
+        data['limitmax'].toString(), // Limit Max
+        data['limitmin'].toString(), // Limit Min
+        data['Alarms'].toString(),
+        data['type'].toString(), // Type
+      ];
+    }).toList();
+    // dataRows2.addAll(dataRows1);
+    // final dataRows = dataRows2;
+    // final dataRows = [
+    //   dataRows1,
+    //   dataRows2,
+    // ];
     // Add chart image and statistics to a single page in PDF
     pdf.addPage(
       pw.MultiPage(
@@ -279,57 +319,133 @@ class GenerateReport {
                   pw.SizedBox(height: 10),
                   pw.Padding(
                     padding: pw.EdgeInsets.symmetric(horizontal: 20),
-                    child: pw.Table.fromTextArray(
-                      headers: headers,
-                      data: dataRows,
-                      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      cellAlignment: pw.Alignment.centerLeft,
-                      tableWidth: pw.TableWidth.max,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          "Limit Conditions:", // Replace with your table name
+                          style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(
+                            height:
+                                8), // Space between the table name and the table
+                        pw.Table.fromTextArray(
+                          headers: headers,
+                          data: combinedDataRows,
+                          headerStyle:
+                              pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                          cellAlignment: pw.Alignment.centerLeft,
+                          tableWidth: pw.TableWidth.max,
+                        ),
+                      ],
                     ),
                   ),
                   pw.SizedBox(height: 15),
-                  pw.Text("Alarm Condition",
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Align(
-                    alignment: pw.Alignment.center,
-                    child: pw.Text(
-                      "Alarm Condition",
-                    ),
-                  ),
-                  pw.SizedBox(height: 28),
-                  pw.Divider(),
-                  pw.Text("Remark:", style: regularStyle),
                   pw.Padding(
-                    padding: pw.EdgeInsets.only(left: 20),
-                    child: pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text(remark, style: regularStyle),
-                          pw.Text("Sign:                         ")
-                        ]),
-                  ),
-                  pw.SizedBox(height: 18),
-                  pw.Divider(),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
-                    children: [
-                      pw.Text('Report generated from OxyData by wavevisions.in',
+                    padding: pw.EdgeInsets.symmetric(horizontal: 20),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          "Alarm Condition:", // Replace with your table name
                           style: pw.TextStyle(
-                              fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                    ],
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(
+                            height:
+                                8), // Space between the table name and the table
+                        pw.Table.fromTextArray(
+                          headers: alarmHeaders,
+                          data: dataAlarmsRow,
+                          headerStyle:
+                              pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                          cellAlignment: pw.Alignment.centerLeft,
+                          tableWidth: pw.TableWidth.max,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ];
         },
+        footer: (pw.Context context) {
+          if (context.pageNumber == context.pagesCount) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+                 mainAxisAlignment: pw.MainAxisAlignment.center,
+
+              children: [
+                pw.Divider(),
+                pw.SizedBox(height: 5),
+                pw.Text("Remark:", style: regularStyle),
+                pw.Padding(
+                  padding: pw.EdgeInsets.only(left: 20),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(remark, style: regularStyle),
+                      pw.Text("Sign:                         "),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 18),
+                pw.Divider(),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.Text(
+                      'Report generated from OxyData by wavevisions.in',
+                      style: pw.TextStyle(
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          } else {
+            return pw.Container(); // Empty footer on other pages
+          }
+        },
       ),
     );
 
-    // Save the PDF
-    final output = await getTemporaryDirectory();
-    final file = File("${output.path}/report.pdf");
-    await file.writeAsBytes(await pdf.save());
-    OpenFile.open(file.path);
+    if (await Permission.manageExternalStorage.request().isGranted) {
+      try {
+        // Define the path to the Download directory
+        final documentsDir =
+            Directory('/storage/emulated/0/Download/OxyData/$title');
+        if (!documentsDir.existsSync()) {
+          documentsDir.createSync(recursive: true);
+        }
+
+        // Create a unique file name with a timestamp
+        String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final filePath = '${documentsDir.path}/Report$title _$timestamp.pdf';
+        final file = File(filePath);
+
+        // Save the PDF to the specified location
+        final pdfBytes = await pdf.save();
+        await file.writeAsBytes(pdfBytes);
+
+        // Open the PDF file using OpenFile
+        final result = await OpenFile.open(filePath);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF saved to $filePath')),
+        );
+        print("File Path: $filePath");
+        print("Open File Result: ${result.message}");
+      } catch (e) {
+        print("Failed to save or open file: $e");
+      }
+    }
   }
 }

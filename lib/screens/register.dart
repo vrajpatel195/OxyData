@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main_page.dart';
-import '../widgets/demo.dart';
+import '../Demo/demo.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -21,13 +21,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
-  bool get _isSubmitButtonEnabled {
-    return _nameController.text.isNotEmpty &&
-        _hospitalCompanyController.text.isNotEmpty &&
-        _contactNumberController.text.isNotEmpty &&
-        _emailController.text.isNotEmpty;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -37,6 +30,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Future<void> _checkFirstRun() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isFirstRun = prefs.getBool('isFirstRun') ?? true;
+    print("first runnnnn: $isFirstRun");
 
     if (!isFirstRun) {
       _navigateToMainPage();
@@ -73,61 +67,59 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Row(
-            children: [
-              Image.asset('assets/oxy_logo.png', width: 70, height: 70),
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.3,
-                height: 10,
-              ),
-              const Text(
-                'User Detail',
-                style: TextStyle(color: Colors.black),
-              ),
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.24,
-                height: 10,
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DemoWid(),
-                    ),
-                  );
-                },
-                child: Text(
-                  'Demo Mode',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black),
-                ),
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5),
+        title: Row(
+          children: [
+            Image.asset('assets/oxy_logo.png', width: 70, height: 70),
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.3,
+              height: 10,
+            ),
+            const Text(
+              'User Detail',
+              style: TextStyle(color: Colors.black),
+            ),
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.24,
+              height: 10,
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DemoWid(),
                   ),
+                );
+              },
+              child: Text(
+                'Demo Mode',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
+              ),
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         backgroundColor: Color.fromRGBO(231, 223, 223, 100),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
+      body: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 10, left: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildTextField(
                   controller: _nameController,
                   label: 'Name of the user',
+                  icon: Icon(Icons.person),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your name';
@@ -141,6 +133,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 _buildTextField(
                   controller: _hospitalCompanyController,
                   label: 'Hospital/Company',
+                  icon: Icon(Icons.local_hospital),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your hospital or company';
@@ -152,25 +145,25 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   height: MediaQuery.of(context).size.height * 0.02,
                 ),
                 _buildTextField(
-                  controller: _cityController,
-                  label: 'City',
-                ),
+                    controller: _cityController,
+                    label: 'City',
+                    icon: Icon(Icons.location_city)),
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.02,
                 ),
                 _buildTextField(
-                  controller: _contactNumberController,
-                  label: 'Contact Number',
-                  keyboardType: TextInputType.phone,
-                ),
+                    controller: _contactNumberController,
+                    label: 'Contact Number',
+                    keyboardType: TextInputType.phone,
+                    icon: Icon(Icons.contact_phone)),
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.02,
                 ),
                 _buildTextField(
-                  controller: _emailController,
-                  label: 'Email ID',
-                  keyboardType: TextInputType.emailAddress,
-                ),
+                    controller: _emailController,
+                    label: 'Email ID',
+                    keyboardType: TextInputType.emailAddress,
+                    icon: Icon(Icons.email)),
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.02,
                 ),
@@ -203,6 +196,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     required String label,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    required Icon icon,
   }) {
     return Container(
       height: 40,
@@ -210,11 +204,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         controller: controller,
         keyboardType: keyboardType,
         decoration: InputDecoration(
-          contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 20),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10.0), // Adjust padding as needed
+            child: icon,
+          ),
+          prefixIconConstraints: BoxConstraints(
+            minWidth: 0, // Adjust this value if needed
+            minHeight: 0, // Adjust this value if needed
+          ),
+          contentPadding:
+              EdgeInsets.symmetric(vertical: 10), // Adjust vertical padding
           labelText: label,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(10.0)),
+            borderRadius: BorderRadius.all(Radius.circular(15.0)),
             borderSide: BorderSide(color: Colors.grey, width: 0.0),
           ),
           border: OutlineInputBorder(),

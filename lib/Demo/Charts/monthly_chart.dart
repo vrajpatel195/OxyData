@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -5,34 +6,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
+import 'package:oxydata/Demo/demo_generate_report.dart';
 
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-import '../Database/db/app_db.dart';
-import '../widgets/generate_report.dart';
-
 // ignore: must_be_immutable
-class MonthlyReport extends StatefulWidget {
-  MonthlyReport(
-      {super.key,
-      required this.selectedMonth,
-      required this.remark,
-      required this.startDate,
-      required this.serialNo});
+class DemoMonthlyReport extends StatefulWidget {
+  DemoMonthlyReport({
+    super.key,
+    required this.selectedMonth,
+    required this.remark,
+    required this.startDate,
+  });
   String? selectedMonth;
   final String remark;
   DateTime? startDate;
-  String serialNo;
+
   @override
-  State<MonthlyReport> createState() => _MonthlyReportState();
+  State<DemoMonthlyReport> createState() => _DemoMonthlyReportState();
 }
 
-class _MonthlyReportState extends State<MonthlyReport> {
+class _DemoMonthlyReportState extends State<DemoMonthlyReport> {
   DateTime? selectedMonthDate;
   late List<Map<String, dynamic>> _dataPoints;
   late List<Map<String, dynamic>> _dataLimits;
-  late List<Map<String, dynamic>> _datainitialLimit;
-  late List<Map<String, dynamic>> _dataAlarms;
 
   final GlobalKey _chartKey = GlobalKey();
   DateTime? startDate;
@@ -43,47 +40,10 @@ class _MonthlyReportState extends State<MonthlyReport> {
   void initState() {
     super.initState();
     print("Startbvhdhgbvjdbv -> ${widget.startDate}");
-    startDate = widget.startDate;
-    printLatestLimitSettings(startDate!);
     _convertMonthToDateTime();
-
-    _getMonthlyData();
-    _getMonthlyLimitData();
-  }
-
-  void _getMonthlyData() async {
-    final _db = await AppDbSingleton().database;
-    List<OxyDatabaseData> dbData =
-        await _db.getDataByMonth(selectedMonthDate!, widget.serialNo);
-    setState(() {
-      _dataPoints = dbData
-          .map((data) => {
-                'timestamp': data.recordedAt!,
-                'purity': data.purity,
-                'flowRate': data.flow,
-                'pressure': data.pressure,
-                'temperature': data.temp,
-              })
-          .toList();
-
-      _setDateRange();
-    });
-  }
-
-  void _getMonthlyLimitData() async {
-    final _db = await AppDbSingleton().database;
-    List<LimitSettingsTableData> dbData =
-        await _db.getLimitSettingsByMonth(selectedMonthDate!, widget.serialNo);
-    setState(() {
-      _dataLimits = dbData
-          .map((data) => {
-                'timestamp': data.recordedAt!,
-                'limit_max': data.limit_max,
-                'limit_min': data.limit_min,
-                'type': data.type,
-              })
-          .toList();
-    });
+    _setDateRange();
+    _generateRandomDataPoints();
+    _dataLimits = _generateRandomDataLimits(widget.startDate!);
   }
 
   void _setDateRange() {
@@ -96,62 +56,109 @@ class _MonthlyReportState extends State<MonthlyReport> {
   void _convertMonthToDateTime() {
     try {
       DateFormat dateFormat = DateFormat('MMMM yyyy');
-
       selectedMonthDate = dateFormat.parse(widget.selectedMonth!);
-
-      print('Selected Month DateTime: $selectedMonthDate');
     } catch (e) {
       print('Error parsing date: $e');
     }
   }
 
-  void printLatestLimitSettings(DateTime selectDate) async {
-    final _db = await AppDbSingleton().database;
-    print("vnbj bjk bkb knfkgjv bn  $selectDate");
-    Map<String, LimitSettingsTableData?> results =
-        await _db.getLatestLimitSettingsForAllTypesBeforeDate(
-            selectDate, widget.serialNo);
+  void _generateRandomDataPoints() {
+    final random = Random();
 
-    _datainitialLimit.clear(); // Clear the list to store fresh data
-    print("vnbj bjk bkb knfkgjv bn ");
-    results.forEach((type, data) {
-      if (data != null) {
-        print('Type: $type');
-        print('Max Limit: ${data.limit_max}');
-        print('Min Limit: ${data.limit_min}');
-        print('Serial No: ${data.serialNo}');
-        print('Recorded At: ${data.recordedAt}');
-        print('--------------------------');
+    _dataPoints = [];
+    DateTime currentTimestamp = startDate!;
 
-        // Store the data in _datainitialLimit
-        _datainitialLimit.add({
-          'timestamp': data.recordedAt,
-          'limit_max': data.limit_max,
-          'limit_min': data.limit_min,
-          'type': type,
-        });
-      } else {
-        print('No data found for Type: $type on or before $selectDate');
-        print('--------------------------');
+    while (currentTimestamp.isBefore(endDate!)) {
+      // Generate random values for each parameter
+      double purity = random.nextDouble() * 10 + 80;
+      double flowRate = random.nextDouble() * 10 + 10;
+      double pressure = random.nextDouble() * 20;
+      double temperature = random.nextDouble() * 10 + 30;
+
+      // Add a new data point
+      _dataPoints.add({
+        'timestamp': currentTimestamp,
+        'purity': purity,
+        'flowRate': flowRate,
+        'pressure': pressure,
+        'temperature': temperature,
+      });
+
+      // Move the timestamp forward by a random number of minutes
+      currentTimestamp = currentTimestamp.add(Duration(
+        days: random.nextInt(2), // Random number of days (0 or 1)
+        hours: random.nextInt(24), // Random number of hours (0-23)
+        minutes: random.nextInt(60), // Random number of minutes (0-59)
+      ));
+
+      // Ensure the timestamp does not exceed the end date
+      if (currentTimestamp.isAfter(endDate!)) {
+        break;
       }
+    }
+
+    // Sort the data points by timestamp to ensure they are in increasing order
+    _dataPoints.sort((a, b) => a['timestamp'].compareTo(b['timestamp']));
+
+    setState(() {
+      // Trigger UI update after generating data points
     });
   }
 
-  void _getMonthlyAlarmData() async {
-    final _db = await AppDbSingleton().database;
-    List<AlarmTableData> dbData =
-        await _db.getAlarmsByMonth(selectedMonthDate!, widget.serialNo);
-    setState(() {
-      _dataAlarms = dbData
-          .map((data) => {
-                'timestamp': data.recordedAt,
-                'limitmax': data.limitmax,
-                'limitmin': data.limitmin,
-                'Alarms': data.value,
-                'type': data.type,
-              })
-          .toList();
-    });
+  List<Map<String, dynamic>> _generateRandomDataLimits(DateTime selectedDate) {
+    final random = Random();
+    List<Map<String, dynamic>> dataLimits = [];
+
+    // Define the types and their corresponding limit ranges
+    List<Map<String, dynamic>> types = [
+      {
+        'type': 'purity',
+        'limitMaxRange': [90, 100], // Max between 90 and 100
+        'limitMinRange': [80, 90], // Min between 80 and 90
+      },
+      {
+        'type': 'flow',
+        'limitMaxRange': [5, 10], // Max between 5 and 10
+        'limitMinRange': [1, 5], // Min between 1 and 5
+      },
+      {
+        'type': 'pressure',
+        'limitMaxRange': [40, 50], // Max between 40 and 50
+        'limitMinRange': [30, 40], // Min between 30 and 40
+      },
+      {
+        'type': 'temp',
+        'limitMaxRange': [30, 40], // Max between 30 and 40
+        'limitMinRange': [20, 30], // Min between 20 and 30
+      }
+    ];
+
+    for (var type in types) {
+      DateTime timestamp = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        random.nextInt(24), // Random hour
+        random.nextInt(60), // Random minute
+        random.nextInt(60), // Random second
+      );
+
+      double limitMax = type['limitMaxRange'][0] +
+          random.nextDouble() *
+              (type['limitMaxRange'][1] - type['limitMaxRange'][0]);
+      double limitMin = type['limitMinRange'][0] +
+          random.nextDouble() *
+              (type['limitMinRange'][1] - type['limitMinRange'][0]);
+
+      dataLimits.add({
+        'timestamp': timestamp,
+        'limit_max': limitMax,
+        'limit_min': limitMin,
+        'type': type['type'],
+      });
+    }
+
+    return dataLimits;
   }
 
   @override
@@ -389,14 +396,12 @@ class _MonthlyReportState extends State<MonthlyReport> {
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         final Uint8List chartImage = await _captureChart();
         try {
-          await GenerateReport(
-                  data: _dataPoints,
-                  dataLimit: _dataLimits,
-                  dataAlarms: _dataAlarms,
-                  title: "Monthly",
-                  datainitialLimit: _datainitialLimit)
-              .generateReportPdf(context, chartImage, widget.remark,
-                  weekStartDate: startDate, weekEndDate: endDate);
+          await DemoGenerateReport(
+            data: _dataPoints,
+            dataLimit: _dataLimits,
+            title: "Monthly",
+          ).generateReportPdf(chartImage, widget.remark,
+              weekStartDate: startDate, weekEndDate: endDate);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Report generated successfully!')),
           );

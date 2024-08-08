@@ -1,22 +1,20 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:oxydata/widgets/demo.dart';
-
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class FlowDemo extends StatefulWidget {
-  const FlowDemo({super.key});
+import '../demo.dart';
+
+class PressureDemo extends StatefulWidget {
+  const PressureDemo({super.key});
 
   @override
-  State<FlowDemo> createState() => _FlowDemoState();
+  State<PressureDemo> createState() => _PressureState();
 }
 
-class _FlowDemoState extends State<FlowDemo> {
-  int maxLimit = 0;
-  int minLimit = 0;
+class _PressureState extends State<PressureDemo> {
+  double maxLimit = 60;
+  double minLimit = 0;
   Timer? _timer;
-
   @override
   void initState() {
     loadData();
@@ -28,24 +26,24 @@ class _FlowDemoState extends State<FlowDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      maxLimit = prefs.getInt('Flow_maxLimit') ?? 0;
-      minLimit = prefs.getInt('Flow_minLimit') ?? 0;
+      maxLimit = prefs.getDouble('Pressure_maxLimit') ?? 0;
+      minLimit = prefs.getDouble('Pressure_minLimit') ?? 0;
     });
   }
 
   void updateMaxLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toInt() + 1;
-      prefs.setInt('Flow_maxLimit', maxLimit);
+      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toDouble() + 1.0;
+      prefs.setDouble('Pressure_maxLimit', maxLimit);
     });
   }
 
   void updateMinLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toInt();
-      prefs.setInt('Flow_minLimit', minLimit);
+      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toDouble();
+      prefs.setDouble('Pressure_minLimit', minLimit);
     });
   }
 
@@ -71,7 +69,7 @@ class _FlowDemoState extends State<FlowDemo> {
       backgroundColor: Color.fromRGBO(255, 255, 255, 1),
       appBar: AppBar(
         leading: IconButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
             },
             icon: Icon(Icons.arrow_back_outlined)),
@@ -79,11 +77,11 @@ class _FlowDemoState extends State<FlowDemo> {
           child: Column(
             children: [
               Text(
-                "Flow Limit Settings",
+                "Pressure Limit Settings",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(
-                "LPM",
+                "PSI",
                 style: TextStyle(fontSize: 15),
               )
             ],
@@ -128,7 +126,7 @@ class _FlowDemoState extends State<FlowDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: Color.fromARGB(255, 248, 186, 40),
+                      color: const Color.fromARGB(255, 195, 0, 0),
                       child: Column(
                         children: [
                           Text(
@@ -181,7 +179,7 @@ class _FlowDemoState extends State<FlowDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: Color.fromARGB(255, 248, 186, 40),
+                      color: const Color.fromARGB(255, 195, 0, 0),
                       child: Column(
                         children: [
                           Text(
@@ -213,6 +211,7 @@ class _FlowDemoState extends State<FlowDemo> {
                   ),
                 ],
               ),
+
               GestureDetector(
                 onTap: () {
                   _changeColor();

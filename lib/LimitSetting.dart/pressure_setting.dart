@@ -8,8 +8,8 @@ import 'api_service.dart';
 import 'package:drift/drift.dart' as drift;
 
 class PressureSetting extends StatefulWidget {
-  final int min;
-  final int max;
+  final double min;
+  final double max;
   PressureSetting({required this.min, required this.max});
   @override
   _PressureSettingState createState() => _PressureSettingState();
@@ -28,8 +28,8 @@ class _PressureSettingState extends State<PressureSetting> {
 
   @override
   void initState() {
-    pressuremax = widget.max / 10;
-    pressuremin = widget.min / 10;
+    pressuremax = widget.max;
+    pressuremin = widget.min;
 
     super.initState();
   }

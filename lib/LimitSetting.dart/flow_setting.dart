@@ -7,8 +7,8 @@ import 'min_max_data.dart';
 import 'package:drift/drift.dart' as drift;
 
 class FlowSetting extends StatefulWidget {
-  final int min;
-  final int max;
+  final double min;
+  final double max;
 
   FlowSetting({required this.min, required this.max});
 
@@ -28,8 +28,8 @@ class _FlowSettingState extends State<FlowSetting> {
   @override
   void initState() {
     super.initState();
-    flowmax = widget.max / 10;
-    flowmin = widget.min / 10;
+    flowmax = widget.max;
+    flowmin = widget.min;
     print("Valeu Of MinMAx  ==> F A  ${widget.max}");
   }
 

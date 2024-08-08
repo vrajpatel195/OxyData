@@ -10,8 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart' as drift;
 
 class PuritySetting extends StatefulWidget {
-  final int min;
-  final int max;
+  final double min;
+  final double max;
   PuritySetting({required this.min, required this.max});
   @override
   _PuritySettingState createState() => _PuritySettingState();
@@ -29,8 +29,9 @@ class _PuritySettingState extends State<PuritySetting> {
 
   @override
   void initState() {
-    puritymax = widget.max / 10;
-    puritymin = widget.min / 10;
+    print("kjvhbsjvhbsdjvgdujsvgbdjvgb ${widget.max}");
+    puritymax = widget.max;
+    puritymin = widget.min;
 
     super.initState();
   }
@@ -41,6 +42,7 @@ class _PuritySettingState extends State<PuritySetting> {
 
     double max = double.parse(puritymax.toStringAsFixed(1));
     double min = double.parse(puritymin.toStringAsFixed(1));
+    print("sdjhgvdsfgvjdh: $max");
     DateTime dateTime = DateTime.now();
 
     prefs.setDouble('purityMax', max);
@@ -176,6 +178,8 @@ class _PuritySettingState extends State<PuritySetting> {
                           // height: MediaQuery.of(context).size.height / 12,
                           child: ElevatedButton(
                             onPressed: () async {
+                              print(
+                                  "kjvhbsjvhbsdjvgdujsvgbdjvgb ${widget.max}");
                               await _saveToSharedPreferences();
 
                               if (_formKey.currentState!.validate()) {

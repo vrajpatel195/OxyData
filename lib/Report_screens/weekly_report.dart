@@ -13,9 +13,18 @@ import '../widgets/generate_report.dart';
 
 // ignore: must_be_immutable
 class WeeklyReport extends StatefulWidget {
-  WeeklyReport({super.key, required this.weekRange, required this.remark});
+  WeeklyReport(
+      {super.key,
+      required this.weekRange,
+      required this.remark,
+      required this.startDate,
+      required this.endDate,
+      required this.serialNo});
   String? weekRange;
   final String remark;
+  DateTime startDate;
+  DateTime endDate;
+  String serialNo;
   @override
   State<WeeklyReport> createState() => _WeeklyReportState();
 }
@@ -23,6 +32,8 @@ class WeeklyReport extends StatefulWidget {
 class _WeeklyReportState extends State<WeeklyReport> {
   late List<Map<String, dynamic>> _dataPoints;
   late List<Map<String, dynamic>> _dataLimits;
+  late List<Map<String, dynamic>> _datainitialLimit;
+  late List<Map<String, dynamic>> _dataAlarms;
 
   final GlobalKey _chartKey = GlobalKey();
   DateTime? startDate;
@@ -32,16 +43,19 @@ class _WeeklyReportState extends State<WeeklyReport> {
   @override
   void initState() {
     super.initState();
-    _convertWeekRangeToDateTime();
 
+    startDate = widget.startDate;
+    endDate = widget.endDate;
+    printLatestLimitSettings(startDate!);
     _getWeeklyData();
     _getWeeklyLimitData();
+    _getWeeklyAlarmData();
   }
 
   void _getWeeklyData() async {
     final _db = await AppDbSingleton().database;
     List<OxyDatabaseData> dbData =
-        await _db.getDataByDateRange(startDate!, endDate!);
+        await _db.getDataByDateRange(startDate!, endDate!, widget.serialNo);
     setState(() {
       _dataPoints = dbData
           .map((data) => {
@@ -58,7 +72,7 @@ class _WeeklyReportState extends State<WeeklyReport> {
   void _getWeeklyLimitData() async {
     final _db = await AppDbSingleton().database;
     List<LimitSettingsTableData> dbData =
-        await _db.getLimitSettingsByWeek(startDate!, endDate!);
+        await _db.getLimitSettingsByWeek(startDate!, endDate!, widget.serialNo);
     setState(() {
       _dataLimits = dbData
           .map((data) => {
@@ -71,12 +85,53 @@ class _WeeklyReportState extends State<WeeklyReport> {
     });
   }
 
-  void _convertWeekRangeToDateTime() {
-    List<String> dates = widget.weekRange!.split(' to ');
-    if (dates.length == 2) {
-      startDate = DateTime.parse(dates[0]);
-      endDate = DateTime.parse(dates[1]);
-    }
+  void printLatestLimitSettings(DateTime selectDate) async {
+    final _db = await AppDbSingleton().database;
+    print("vnbj bjk bkb knfkgjv bn  $selectDate");
+    Map<String, LimitSettingsTableData?> results =
+        await _db.getLatestLimitSettingsForAllTypesBeforeDate(
+            selectDate, widget.serialNo);
+
+    _datainitialLimit.clear(); // Clear the list to store fresh data
+    print("vnbj bjk bkb knfkgjv bn ");
+    results.forEach((type, data) {
+      if (data != null) {
+        print('Type: $type');
+        print('Max Limit: ${data.limit_max}');
+        print('Min Limit: ${data.limit_min}');
+        print('Serial No: ${data.serialNo}');
+        print('Recorded At: ${data.recordedAt}');
+        print('--------------------------');
+
+        // Store the data in _datainitialLimit
+        _datainitialLimit.add({
+          'timestamp': data.recordedAt,
+          'limit_max': data.limit_max,
+          'limit_min': data.limit_min,
+          'type': type,
+        });
+      } else {
+        print('No data found for Type: $type on or before $selectDate');
+        print('--------------------------');
+      }
+    });
+  }
+
+  void _getWeeklyAlarmData() async {
+    final _db = await AppDbSingleton().database;
+    List<AlarmTableData> dbData =
+        await _db.getAlarmsByWeek(startDate!, endDate!, widget.serialNo);
+    setState(() {
+      _dataAlarms = dbData
+          .map((data) => {
+                'timestamp': data.recordedAt,
+                'limitmax': data.limitmax,
+                'limitmin': data.limitmin,
+                'Alarms': data.value,
+                'type': data.type,
+              })
+          .toList();
+    });
   }
 
   @override
@@ -309,9 +364,17 @@ class _WeeklyReportState extends State<WeeklyReport> {
         final Uint8List chartImage = await _captureChart();
         try {
           await GenerateReport(
-                  data: _dataPoints, dataLimit: _dataLimits, title: "Weekly")
-              .generateReportPdf(chartImage, widget.remark,
-                  weekStartDate: startDate, weekEndDate: endDate);
+              data: _dataPoints,
+              dataLimit: _dataLimits,
+              dataAlarms: _dataAlarms,
+              title: "Weekly",
+              datainitialLimit: []).generateReportPdf(
+            context,
+            chartImage,
+            widget.remark,
+            weekStartDate: startDate,
+            weekEndDate: endDate,
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Report generated successfully!')),
           );

@@ -3,10 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:oxydata/Report_screens/daily_report.dart';
 import 'package:oxydata/Report_screens/monthly_report.dart';
 import 'package:oxydata/Report_screens/weekly_report.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OldReportScreen extends StatefulWidget {
-  const OldReportScreen({super.key});
-
+  OldReportScreen({super.key, required this.serialNo});
+  String serialNo;
   @override
   State<OldReportScreen> createState() => _OldReportScreenState();
 }
@@ -18,6 +19,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
   DateTime now = DateTime.now();
   DateTime startDate = DateTime.now().subtract(Duration(days: 90));
   String? _selectedMonth;
+  DateTime? _StartMonthDate;
 
   Future<void> _showMonthSelector(BuildContext context) async {
     List<String> months = [];
@@ -38,6 +40,10 @@ class _OldReportScreenState extends State<OldReportScreen> {
               return ListTile(
                 title: Text(month),
                 onTap: () {
+                  DateFormat dateFormat = DateFormat('MMMM yyyy');
+                  DateTime parsedDate = dateFormat.parse(month);
+                  _StartMonthDate =
+                      DateTime(parsedDate.year, parsedDate.month, 1);
                   setState(() {
                     _selectedMonth = month;
                   });
@@ -52,6 +58,8 @@ class _OldReportScreenState extends State<OldReportScreen> {
     _showRemarkDialog(3);
   }
 
+  late DateTime startOfWeek;
+  late DateTime endOfWeek;
   Future<void> _selectDateAndCalculateWeek(BuildContext context) async {
     // 3 months ago
     DateTime endDate = now; // Current date
@@ -65,9 +73,8 @@ class _OldReportScreenState extends State<OldReportScreen> {
 
     if (picked != null) {
       // Calculate the start (Sunday) and end (Saturday) of the week
-      DateTime startOfWeek =
-          picked.subtract(Duration(days: picked.weekday % 7));
-      DateTime endOfWeek = startOfWeek.add(Duration(days: 6));
+      startOfWeek = picked.subtract(Duration(days: picked.weekday % 7));
+      endOfWeek = startOfWeek.add(Duration(days: 6));
 
       // Format the dates
       String formattedStart = DateFormat('yyyy-MM-dd').format(startOfWeek);
@@ -96,11 +103,16 @@ class _OldReportScreenState extends State<OldReportScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Center(
-          child: Text("Report"),
+          child: Text("Report  ${widget.serialNo}"),
         ),
         toolbarHeight: 40,
         backgroundColor: Color.fromRGBO(255, 255, 255, 0.612),
@@ -283,6 +295,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
             builder: (context) => DailyReport(
               selectedDate: _selectedDate,
               remark: _remarkController.text,
+              serialNo: widget.serialNo,
             ),
           ),
         ).then((_) {
@@ -299,6 +312,9 @@ class _OldReportScreenState extends State<OldReportScreen> {
             builder: (context) => WeeklyReport(
               weekRange: _weekRange,
               remark: _remarkController.text,
+              startDate: startOfWeek,
+              endDate: endOfWeek,
+              serialNo: widget.serialNo,
             ),
           ),
         ).then((_) {
@@ -315,6 +331,8 @@ class _OldReportScreenState extends State<OldReportScreen> {
             builder: (context) => MonthlyReport(
               selectedMonth: _selectedMonth,
               remark: _remarkController.text,
+              startDate: _StartMonthDate,
+              serialNo: widget.serialNo,
             ),
           ),
         ).then((_) {

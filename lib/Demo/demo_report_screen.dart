@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:oxydata/Demo/Charts/current_chart.dart';
+import 'package:oxydata/Demo/Charts/daily_chart.dart';
+import 'package:oxydata/Demo/Charts/monthly_chart.dart';
+import 'package:oxydata/Demo/Charts/weekly_chart.dart';
 import 'package:oxydata/LimitSetting.dart/min_max_data.dart';
 import 'package:oxydata/Report_screens/daily_report.dart';
 import 'package:oxydata/Report_screens/monthly_report.dart';
 import 'package:oxydata/Report_screens/weekly_report.dart';
 import 'package:oxydata/Report_screens/current_report.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../LimitSetting.dart/api_service.dart';
-
-class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key, required this.data, required this.serialNo});
+class DemoReportScreen extends StatefulWidget {
+  DemoReportScreen({super.key, required this.data});
   final List<Map<String, dynamic>> data;
-  final String serialNo;
+
   @override
-  State<ReportScreen> createState() => _ReportScreenState();
+  State<DemoReportScreen> createState() => _DemoReportScreenState();
 }
 
-class _ReportScreenState extends State<ReportScreen> {
+class _DemoReportScreenState extends State<DemoReportScreen> {
   TextEditingController _remarkController = TextEditingController();
   DateTime? _selectedDate;
   String? _weekRange;
@@ -181,7 +182,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Past Report',
+                      'Old Report',
                       style:
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
@@ -355,10 +356,9 @@ class _ReportScreenState extends State<ReportScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DailyReport(
+            builder: (context) => DemoDailyReport(
               selectedDate: _selectedDate,
               remark: _remarkController.text,
-              serialNo: widget.serialNo,
             ),
           ),
         ).then((_) {
@@ -372,12 +372,11 @@ class _ReportScreenState extends State<ReportScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => WeeklyReport(
+            builder: (context) => DemoWeeklyReport(
               weekRange: _weekRange,
               remark: _remarkController.text,
               startDate: startOfWeek,
               endDate: endOfWeek,
-              serialNo: widget.serialNo,
             ),
           ),
         ).then((_) {
@@ -391,11 +390,10 @@ class _ReportScreenState extends State<ReportScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => MonthlyReport(
+            builder: (context) => DemoMonthlyReport(
               selectedMonth: _selectedMonth,
               remark: _remarkController.text,
               startDate: _StartMonthDate,
-              serialNo: widget.serialNo,
             ),
           ),
         ).then((_) {
@@ -409,7 +407,7 @@ class _ReportScreenState extends State<ReportScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => GraphReport(
+            builder: (context) => DemoCurrentChart(
               data: widget.data,
               remark: _remarkController.text,
             ),

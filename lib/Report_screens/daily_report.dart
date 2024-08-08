@@ -15,7 +15,12 @@ import '../widgets/generate_report.dart';
 
 class DailyReport extends StatefulWidget {
   final String remark;
-  DailyReport({super.key, required this.selectedDate, required this.remark});
+  final String serialNo;
+  DailyReport(
+      {super.key,
+      required this.selectedDate,
+      required this.remark,
+      required this.serialNo});
   final DateTime? selectedDate;
   @override
   State<DailyReport> createState() => _DailyReportState();
@@ -24,7 +29,8 @@ class DailyReport extends StatefulWidget {
 class _DailyReportState extends State<DailyReport> {
   late List<Map<String, dynamic>> _dataPoints;
   late List<Map<String, dynamic>> _dataLimits;
-  //late List<Map<String, dynamic>> _dataAlarms;
+  List<Map<String, dynamic>> _datainitialLimit = [];
+  List<Map<String, dynamic>> _dataAlarms = [];
   late DateTime _selectedDate;
   final GlobalKey _chartKey = GlobalKey();
 
@@ -33,15 +39,18 @@ class _DailyReportState extends State<DailyReport> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = widget.selectedDate!;
 
-    _getDailyData();
+    _selectedDate = widget.selectedDate!;
+    printLatestLimitSettings(_selectedDate);
     _getDailyLimitData();
+    _getDailyData();
+    _getDailyAlarmData();
   }
 
   void _getDailyData() async {
     final _db = await AppDbSingleton().database;
-    List<OxyDatabaseData> dbData = await _db.getDataByDate(_selectedDate);
+    List<OxyDatabaseData> dbData =
+        await _db.getDataByDate(_selectedDate, widget.serialNo);
     setState(() {
       _dataPoints = dbData
           .map((data) => {
@@ -53,28 +62,50 @@ class _DailyReportState extends State<DailyReport> {
               })
           .toList();
     });
+  }
 
-    final latestData =
-        await _db.getLatestLimitSettingsForAllTypesBeforeDate(_selectedDate);
+  void printLatestLimitSettings(DateTime selectDate) async {
+    final _db = await AppDbSingleton().database;
+    print("vnbj bjk bkb knfkgjv bn ");
+    Map<String, LimitSettingsTableData?> results =
+        await _db.getLatestLimitSettingsForAllTypesBeforeDate(
+            selectDate, widget.serialNo);
+    print("vnbj bjk bkb knfkgjv bn ");
+    _datainitialLimit.clear(); // Clear the list to store fresh data
 
-    for (String type in ['Purity', 'Pressure', 'Temp', 'Flow']) {
-      final data = latestData[type];
+    results.forEach((type, data) {
       if (data != null) {
-        print("Latest $type Data before $_selectedDate: ${data.limit_max}");
+        print('Type: $type');
+        print('Max Limit: ${data.limit_max}');
+        print('Min Limit: ${data.limit_min}');
+        print('Serial No: ${data.serialNo}');
+        print('Recorded At: ${data.recordedAt}');
+        print('--------------------------');
+
+        // Store the data in _datainitialLimit
+        _datainitialLimit.add({
+          'timestamp': data.recordedAt,
+          'limit_max': data.limit_max,
+          'limit_min': data.limit_min,
+          'type': type,
+        });
+
+        print(" data found for Type:  $_datainitialLimit");
       } else {
-        print("No $type data found before $_selectedDate.");
+        print('No data found for Type: $type on or before $selectDate    ');
+        print('--------------------------');
       }
-    }
+    });
   }
 
   void _getDailyLimitData() async {
     final _db = await AppDbSingleton().database;
     List<LimitSettingsTableData> dbData =
-        await _db.getLimitSettingsByDate(_selectedDate);
+        await _db.getLimitSettingsByDate(_selectedDate, widget.serialNo);
     setState(() {
       _dataLimits = dbData
           .map((data) => {
-                'timestamp': data.recordedAt!,
+                'timestamp': data.recordedAt,
                 'limit_max': data.limit_max,
                 'limit_min': data.limit_min,
                 'type': data.type,
@@ -83,7 +114,22 @@ class _DailyReportState extends State<DailyReport> {
     });
   }
 
-  void _getDailyAlarmData() async {}
+  void _getDailyAlarmData() async {
+    final _db = await AppDbSingleton().database;
+    List<AlarmTableData> dbData =
+        await _db.getAlarmsByDate(_selectedDate, widget.serialNo);
+    setState(() {
+      _dataAlarms = dbData
+          .map((data) => {
+                'timestamp': data.recordedAt,
+                'limitmax': data.limitmax,
+                'limitmin': data.limitmin,
+                'Alarms': data.value,
+                'type': data.type,
+              })
+          .toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +139,7 @@ class _DailyReportState extends State<DailyReport> {
     final endOfDay = DateTime(
         _selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59);
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
             onPressed: () {
@@ -123,9 +170,22 @@ class _DailyReportState extends State<DailyReport> {
         key: _chartKey,
         child: _dataPoints.isEmpty
             ? Center(
-                child: Text(
-                  "No data found!     ($date)",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/NO_data_found.gif',
+                      width: MediaQuery.of(context).size.width * 0.4,
+                      height: MediaQuery.of(context).size.height * 0.65,
+                      fit: BoxFit.cover,
+                    ),
+                    Text(
+                      "No data found!     ($date)",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               )
             : Row(
@@ -158,6 +218,24 @@ class _DailyReportState extends State<DailyReport> {
                             width: 2,
                           ),
                         ),
+                        annotations: <CartesianChartAnnotation>[
+                          CartesianChartAnnotation(
+                            widget: Container(
+                              child: Text(
+                                '23:59', // Replace with your end label
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            coordinateUnit: CoordinateUnit.point,
+                            region: AnnotationRegion.chart,
+                            x: endOfDay,
+                            y: -9.2, // Adjust the y position as needed
+                          ),
+                        ],
                         primaryYAxis: const NumericAxis(
                           name: 'primaryYAxis1',
                           minimum: 0,
@@ -321,8 +399,12 @@ class _DailyReportState extends State<DailyReport> {
         final Uint8List chartImage = await _captureChart();
         try {
           await GenerateReport(
-                  data: _dataPoints, dataLimit: _dataLimits, title: "Daily")
-              .generateReportPdf(chartImage, widget.remark,
+                  data: _dataPoints,
+                  dataLimit: _dataLimits,
+                  dataAlarms: _dataAlarms,
+                  title: "Daily",
+                  datainitialLimit: _datainitialLimit)
+              .generateReportPdf(context, chartImage, widget.remark,
                   selectDate: _selectedDate);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Report generated successfully!')),

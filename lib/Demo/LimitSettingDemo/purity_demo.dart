@@ -1,49 +1,46 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../widgets/demo.dart';
-
-class PressureDemo extends StatefulWidget {
-  const PressureDemo({super.key});
+class PurityDemo extends StatefulWidget {
+  const PurityDemo({super.key});
 
   @override
-  State<PressureDemo> createState() => _PressureState();
+  State<PurityDemo> createState() => _PurityState();
 }
 
-class _PressureState extends State<PressureDemo> {
-  int maxLimit = 60;
-  int minLimit = 0;
+class _PurityState extends State<PurityDemo> {
+  double maxLimit = 60;
+  double minLimit = 0;
   Timer? _timer;
+
   @override
   void initState() {
     loadData();
-    // TODO: implement initState
     super.initState();
   }
 
   void loadData() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-
     setState(() {
-      maxLimit = prefs.getInt('Pressure_maxLimit') ?? 0;
-      minLimit = prefs.getInt('Pressure_minLimit') ?? 0;
+      maxLimit = prefs.getDouble('Purity_maxLimit') ?? 60;
+      minLimit = prefs.getDouble('Purity_minLimit') ?? 0;
     });
   }
 
   void updateMaxLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toInt() + 1;
-      prefs.setInt('Pressure_maxLimit', maxLimit);
+      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toDouble() + 1.0;
+      prefs.setDouble('Purity_maxLimit', maxLimit);
     });
   }
 
   void updateMinLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toInt();
-      prefs.setInt('Pressure_minLimit', minLimit);
+      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toDouble();
+      prefs.setDouble('Purity_minLimit', minLimit);
     });
   }
 
@@ -69,30 +66,31 @@ class _PressureState extends State<PressureDemo> {
       backgroundColor: Color.fromRGBO(255, 255, 255, 1),
       appBar: AppBar(
         leading: IconButton(
-            onPressed: () async {
-              Navigator.pop(context);
-            },
-            icon: Icon(Icons.arrow_back_outlined)),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          icon: Icon(Icons.arrow_back_outlined),
+        ),
         title: Center(
           child: Column(
             children: [
               Text(
-                "Pressure Limit Settings",
+                "Purity Limit Settings",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(
-                "PSI",
+                "%",
                 style: TextStyle(fontSize: 15),
-              )
+              ),
             ],
           ),
         ),
         backgroundColor: Color.fromRGBO(255, 255, 255, 1),
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(4.0), // Adjust the height as needed
+          preferredSize: Size.fromHeight(4.0),
           child: Container(
-            color: Colors.black, // Change this to the desired border color
-            height: 4.0, // Height of the bottom border
+            color: Colors.black,
+            height: 4.0,
           ),
         ),
       ),
@@ -103,8 +101,6 @@ class _PressureState extends State<PressureDemo> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Text("O2", style: TextStyle(fontSize: 20)),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -126,22 +122,23 @@ class _PressureState extends State<PressureDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: const Color.fromARGB(255, 195, 0, 0),
+                      color: const Color.fromARGB(255, 0, 34, 145),
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '${maxLimit}',
+                            '$maxLimit',
                             style: TextStyle(fontSize: 31, color: Colors.white),
                           ),
                           Text(
                             "Maximum Limit",
                             style: TextStyle(fontSize: 10, color: Colors.white),
-                          )
+                          ),
                         ],
                       ),
                       margin: EdgeInsets.all(10),
                     ),
-                  ), //${product.minLimit}
+                  ),
                   GestureDetector(
                     onTap: () {
                       updateMaxLimit(maxLimit.toDouble() + 1.0);
@@ -179,22 +176,23 @@ class _PressureState extends State<PressureDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: const Color.fromARGB(255, 195, 0, 0),
+                      color: const Color.fromARGB(255, 0, 34, 145),
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '${minLimit}',
+                            '$minLimit',
                             style: TextStyle(fontSize: 31, color: Colors.white),
                           ),
                           Text(
                             "Minimum Limit",
                             style: TextStyle(fontSize: 10, color: Colors.white),
-                          )
+                          ),
                         ],
                       ),
                       margin: EdgeInsets.all(10),
                     ),
-                  ), //${product.maxLimit}
+                  ),
                   GestureDetector(
                     onTap: () {
                       updateMinLimit(minLimit.toDouble() + 1.0);
@@ -211,7 +209,6 @@ class _PressureState extends State<PressureDemo> {
                   ),
                 ],
               ),
-
               GestureDetector(
                 onTap: () {
                   _changeColor();

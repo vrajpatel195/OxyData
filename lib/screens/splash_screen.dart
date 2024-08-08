@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oxydata/screens/register.dart';
+
+import '../Database/db/app_db.dart';
 // Import your home screen or main screen
 
 class SplashScreen extends StatefulWidget {
@@ -28,6 +30,10 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   _navigateToHome() async {
+    final db = await AppDbSingleton().database;
+
+    // Delete data older than 3 months
+    await db.deleteDataOlderThanThreeMonths();
     await Future.delayed(Duration(seconds: 5), () {});
     Navigator.pushReplacement(
       context,

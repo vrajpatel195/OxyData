@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../widgets/demo.dart';
+import '../demo.dart';
 
 class TempDemo extends StatefulWidget {
   const TempDemo({super.key});
@@ -13,8 +13,8 @@ class TempDemo extends StatefulWidget {
 }
 
 class _TempState extends State<TempDemo> {
-  int maxLimit = 60;
-  int minLimit = 0;
+  double maxLimit = 60;
+  double minLimit = 0;
   Timer? _timer;
   @override
   void initState() {
@@ -27,24 +27,24 @@ class _TempState extends State<TempDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      maxLimit = prefs.getInt('Temp_maxLimit') ?? 0;
-      minLimit = prefs.getInt('Temp_minLimit') ?? 0;
+      maxLimit = prefs.getDouble('Temp_maxLimit') ?? 0;
+      minLimit = prefs.getDouble('Temp_minLimit') ?? 0;
     });
   }
 
   void updateMaxLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toInt() + 1;
-      prefs.setInt('Temp_maxLimit', maxLimit);
+      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toDouble() + 1.0;
+      prefs.setDouble('Temp_maxLimit', maxLimit);
     });
   }
 
   void updateMinLimit(double value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toInt();
-      prefs.setInt('Temp_minLimit', minLimit);
+      minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toDouble();
+      prefs.setDouble('Temp_minLimit', minLimit);
     });
   }
 

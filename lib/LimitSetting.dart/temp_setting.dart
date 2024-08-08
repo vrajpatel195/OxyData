@@ -10,8 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart' as drift;
 
 class TempSetting extends StatefulWidget {
-  final int min;
-  final int max;
+  final double min;
+  final double max;
   TempSetting({required this.min, required this.max});
   @override
   _TempSettingState createState() => _TempSettingState();
@@ -30,8 +30,8 @@ class _TempSettingState extends State<TempSetting> {
 
   @override
   void initState() {
-    tempMax = widget.max / 10;
-    tempMin = widget.min / 10;
+    tempMax = widget.max;
+    tempMin = widget.min;
     super.initState();
   }
 

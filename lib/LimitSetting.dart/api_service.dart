@@ -45,16 +45,18 @@ Future<MinMaxData> retrieveData() async {
   double tempMin = prefs.getDouble('tempMin') ?? 0.0;
   String serialNo = prefs.getString('serialNo') ?? "";
   String locationName = prefs.getString('locationName') ?? "";
+  print("ihsfvukihikvhivh: $purityMax");
+  print("ihsfvukihikvhivh: ${purityMax.toString()}");
 
   return MinMaxData(
-    o2Max: ((purityMax * 10).round()).toString(),
-    o2Min: ((purityMin * 10).round()).toString(),
-    flowMax: ((flowMax * 10).round()).toString(),
-    flowMin: ((flowMin * 10).round()).toString(),
-    pressureMax: ((pressureMax * 10).round()).toString(),
-    pressureMin: ((pressureMin * 10).round()).toString(),
-    temperatureMax: ((tempMax * 10).round()).toString(),
-    temperatureMin: ((tempMin * 10).round()).toString(),
+    o2Max: purityMax.toString(),
+    o2Min: purityMin.toString(),
+    flowMax: flowMax.toString(),
+    flowMin: flowMin.toString(),
+    pressureMax: pressureMax.toString(),
+    pressureMin: pressureMin.toString(),
+    temperatureMax: tempMax.toString(),
+    temperatureMin: tempMin.toString(),
     serialNo: serialNo,
     locationName: locationName,
   );
@@ -64,7 +66,7 @@ Future<void> postStoredData() async {
   print("postdata");
   try {
     MinMaxData data = await retrieveData();
-    print("Dataaa: $data");
+    print("Dataaa: ${data.o2Max}");
     await ApiService.postMinMaxData(data);
     print('Data posted successfully');
   } catch (e) {

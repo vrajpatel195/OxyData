@@ -1,43 +1,23 @@
 import 'dart:async';
-import 'dart:convert';
-
-import 'package:drift/drift.dart' as drift;
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import 'package:http/http.dart' as http;
-
-import 'package:oxydata/LimitSetting.dart/flow_setting.dart';
-import 'package:oxydata/LimitSetting.dart/pressure_setting.dart';
-import 'package:oxydata/LimitSetting.dart/temp_setting.dart';
-import 'package:oxydata/model/model.dart';
-import 'package:oxydata/screens/report_screen.dart';
-
+import 'package:oxydata/Demo/demo_report_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:syncfusion_flutter_charts/charts.dart';
-//import 'package:syncfusion_flutter_charts/charts.dart';
+import 'LimitSettingDemo/Temp_demo.dart';
+import 'LimitSettingDemo/flow_demo.dart';
+import 'LimitSettingDemo/pressure_demo.dart';
+import 'LimitSettingDemo/purity_demo.dart';
 
-import 'package:tuple/tuple.dart';
-
-import '../Database/db/app_db.dart';
-import '../LimitSetting.dart/api_service.dart';
-import '../LimitSetting.dart/min_max_data.dart';
-
-import '../LimitSetting.dart/purity_setting.dart';
-
-class LineCharWid extends StatefulWidget {
-  const LineCharWid({Key? key}) : super(key: key);
+class DemoWid extends StatefulWidget {
+  const DemoWid({Key? key}) : super(key: key);
 
   @override
-  State<LineCharWid> createState() => _LineCharWidState();
-
-  captureChartImage() {}
+  State<DemoWid> createState() => _DemoWidState();
 }
 
-class _LineCharWidState extends State<LineCharWid> {
-  List<OxyData> oxydata = [];
-
+class _DemoWidState extends State<DemoWid> {
   double? Purity_minLimit;
   double? Purity_maxLimit;
   double? Flow_maxLimit;
@@ -47,17 +27,21 @@ class _LineCharWidState extends State<LineCharWid> {
   double? Temp_maxLimit;
   double? Temp_minLimit;
 
-  int countPurity = 0;
-  int countPressure = 0;
-  int countFlow = 0;
-  int countTemp = 0;
+  String? Purity_maxStr;
+  String? Purity_minStr;
+  String? flow_maxStr;
+  String? flow_minStr;
+  String? pressure_maxStr;
+  String? pressure_minStr;
+  String? temp_maxStr;
+  String? temp_minStr;
 
   int time = 0;
-
   int _currentIndex = 0;
   String _currentString = 'SYSTEM IS RUNNING OK';
   Set<String> _uniqueStrings = {};
   List<String> _uniqueStringList = [];
+  List<Map<String, dynamic>> _cache = [];
 
   // final StreamController<List<ChartData>> _streamController =
   //     StreamController<List<ChartData>>.broadcast();
@@ -80,72 +64,38 @@ class _LineCharWidState extends State<LineCharWid> {
 
   void _navigateToDetailPage(int index) async {
     if (index == 0) {
-      var minMax = await setMinMax("O2");
-      if (minMax != null) {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PuritySetting(
-              max: minMax.item1,
-              min: minMax.item2,
-            ),
-          ),
-        );
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PurityDemo()),
+      );
 
-        if (result == 1) {
-          _loadLimits();
-        }
+      if (result == 1) {
+        print("returnnnnnnn");
+        _storeData();
       }
     } else if (index == 1) {
-      var minMax = await setMinMax("Flow");
-      if (minMax != null) {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FlowSetting(
-              max: minMax.item1,
-              min: minMax.item2,
-            ),
-          ),
-        );
-
-        if (result == 1) {
-          _loadLimits();
-        }
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => FlowDemo()),
+      );
+      if (result == 1) {
+        _storeData();
       }
     } else if (index == 2) {
-      var minMax = await setMinMax("Pr");
-      if (minMax != null) {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PressureSetting(
-              max: minMax.item1,
-              min: minMax.item2,
-            ),
-          ),
-        );
-
-        if (result == 1) {
-          _loadLimits();
-        }
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PressureDemo()),
+      );
+      if (result == 1) {
+        _storeData();
       }
     } else if (index == 3) {
-      var minMax = await setMinMax("Temp");
-      if (minMax != null) {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TempSetting(
-              max: minMax.item1,
-              min: minMax.item2,
-            ),
-          ),
-        );
-
-        if (result == 1) {
-          _loadLimits();
-        }
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => TempDemo()),
+      );
+      if (result == 1) {
+        _storeData();
       }
     }
   }
@@ -156,10 +106,8 @@ class _LineCharWidState extends State<LineCharWid> {
   @override
   void initState() {
     super.initState();
-
-    _saveLimits();
+    _storeData();
     _initialData();
-
     _updateController = StreamController<void>.broadcast();
 
     _streamSubscription = _updateController.stream.listen((_) {
@@ -167,17 +115,12 @@ class _LineCharWidState extends State<LineCharWid> {
     });
     if (_isRunning) return;
     Timer.periodic(Duration(seconds: 1), (timer) async {
-      _saveLimits();
       await getData();
       _updateController.add(null);
       time++;
       _updateCurrentString();
     });
     _isRunning = true;
-
-    Timer.periodic(const Duration(minutes: 1), (timer) {
-      storeAverageData();
-    });
 
     _puritySubscription = _purityController.stream.listen((data) {
       setState(() {
@@ -214,6 +157,17 @@ class _LineCharWidState extends State<LineCharWid> {
     });
   }
 
+  void _initialData() {
+    _purityData.add(_ChartData(60, -1));
+    _pressureData.add(_ChartData(60, -1));
+    _flowRateData.add(_ChartData(60, -1));
+    _temperatureData.add(_ChartData(60, -1));
+    _purityData.add(_ChartData(0, -1));
+    _pressureData.add(_ChartData(0, -1));
+    _flowRateData.add(_ChartData(0, -1));
+    _temperatureData.add(_ChartData(0, -1));
+  }
+
   void _updateDataSource() {
     _purityChartController?.updateDataSource(
       addedDataIndex: _purityData.length - 1,
@@ -233,154 +187,25 @@ class _LineCharWidState extends State<LineCharWid> {
     );
   }
 
-  void _initialData() {
-    _purityData.add(_ChartData(60, -1));
-    _pressureData.add(_ChartData(60, -1));
-    _flowRateData.add(_ChartData(60, -1));
-    _temperatureData.add(_ChartData(60, -1));
-    _purityData.add(_ChartData(0, -1));
-    _pressureData.add(_ChartData(0, -1));
-    _flowRateData.add(_ChartData(0, -1));
-    _temperatureData.add(_ChartData(0, -1));
-  }
-
-  Future<Tuple2<double, double>?> setMinMax(String gasName) async {
-    final data = await ApiService.fetchMinMaxData();
-    print(("sjvhdisfhvidhvdiuh: ${data.o2Max}"));
-    switch (gasName) {
-      case "O2":
-        return Tuple2(double.parse(data.o2Max), double.parse(data.o2Min));
-
-      case "Flow":
-        print("Valeu Of MinMAx  ==> F ${data.flowMax}");
-        return Tuple2(double.parse(data.flowMax), double.parse(data.flowMin));
-
-      case "Pr":
-        return Tuple2(
-            double.parse(data.pressureMax), double.parse(data.pressureMin));
-
-      case "Temp":
-        return Tuple2(double.parse(data.temperatureMax),
-            double.parse(data.temperatureMin));
-      default:
-        return null;
-    }
-  }
-
-  Future<void> _saveLimits() async {
-    MinMaxData data = await ApiService.fetchMinMaxData();
-
-    final prefs = await SharedPreferences.getInstance();
-    final _db = await AppDbSingleton().database;
-    await _loadLimits();
-
-    print(
-        "Purity maxxxlimit ===> ${Purity_maxLimit!.toString()}    ${data.o2Max}");
-    print(
-        "Pressure maxxxlimit ===> ${Pressure_maxLimit!.toString()}    ${data.pressureMax}");
-    if ((Purity_maxLimit!).toString() != data.o2Max &&
-        (Purity_minLimit!).toString() != data.o2Min) {
-      print(
-          "Purity maxxxlimit ===> ${(Purity_maxLimit!).toString()}    ${data.o2Max}");
-      try {
-        await _db.insertLimitSetting(LimitSettingsTableCompanion(
-          limit_max: drift.Value(double.tryParse(data.o2Max)!),
-          limit_min: drift.Value(double.tryParse(data.o2Min)!),
-          type: drift.Value("Purity"),
-          serialNo: drift.Value(data.serialNo),
-          recordedAt: drift.Value(DateTime.now()),
-        ));
-      } catch (e) {
-        print("Error while saving data $e");
-      }
-
-      await prefs.setDouble('purityMax', double.tryParse(data.o2Max)!);
-      await prefs.setDouble('purityMin', double.tryParse(data.o2Min)!);
-
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
-    }
-
-    if ((Flow_maxLimit!).toString() != data.flowMax &&
-        (Flow_minLimit!).toString() != data.flowMin) {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
-        limit_max: drift.Value(double.tryParse(data.flowMax)!),
-        limit_min: drift.Value(double.tryParse(data.flowMin)!),
-        type: drift.Value("Flow"),
-        serialNo: drift.Value(data.serialNo),
-        recordedAt: drift.Value(DateTime.now()),
-      ));
-      await prefs.setDouble('flowMax', double.tryParse(data.flowMax)!);
-      await prefs.setDouble('flowMin', double.tryParse(data.flowMin)!);
-
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
-    }
-    print(
-        "Pressure maxxxlimit ===> ${(Pressure_maxLimit!).toString()}    ${data.pressureMax}");
-    if ((Pressure_maxLimit!).toString() != data.pressureMax &&
-        (Pressure_minLimit!).toString() != data.pressureMin) {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
-        limit_max: drift.Value(double.tryParse(data.pressureMax)!),
-        limit_min: drift.Value(double.tryParse(data.pressureMin)!),
-        type: drift.Value("Pressure"),
-        serialNo: drift.Value(data.serialNo),
-        recordedAt: drift.Value(DateTime.now()),
-      ));
-      await prefs.setDouble('pressureMax', double.tryParse(data.pressureMax)!);
-      await prefs.setDouble('pressureMin', double.tryParse(data.pressureMin)!);
-
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
-    }
-    print(
-        "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
-    if ((Temp_maxLimit!).toString() != data.temperatureMax &&
-        (Temp_minLimit!).toString() != data.temperatureMin) {
-      print(
-          "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
-        limit_max: drift.Value(double.tryParse(data.temperatureMax)!),
-        limit_min: drift.Value(double.tryParse(data.temperatureMin)!),
-        type: drift.Value("Temperature"),
-        serialNo: drift.Value(data.serialNo),
-        recordedAt: drift.Value(DateTime.now()),
-      ));
-      print(
-          "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
-      await prefs.setDouble('tempMax', double.tryParse(data.temperatureMax)!);
-      await prefs.setDouble('tempMin', double.tryParse(data.temperatureMin)!);
-      print(
-          "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
-    }
-
-    await prefs.setString('serialNo', data.serialNo);
-    await prefs.setString('locationName', data.locationName);
-
-    await _loadLimits();
-  }
-
-  Future<void> _loadLimits() async {
+  Future<void> _storeData() async {
     final prefs = await SharedPreferences.getInstance();
     try {
       setState(() {
-        print("jijijijiji - > ${prefs.get("purityMax")}");
-        Purity_maxLimit = prefs.getDouble("purityMax") ?? -1.0;
-
-        Purity_minLimit = prefs.getDouble("purityMin") ?? -1.0;
-        Flow_maxLimit = prefs.getDouble("flowMax") ?? -1.0;
-        print("Flow max Load: $Flow_maxLimit");
-        Flow_minLimit = prefs.getDouble("flowMin") ?? -1.0;
-        Pressure_maxLimit = prefs.getDouble("pressureMax") ?? -1.0;
-        Pressure_minLimit = prefs.getDouble("pressureMin") ?? -1.0;
-        Temp_maxLimit = prefs.getDouble("tempMax") ?? -1.0;
-        Temp_minLimit = prefs.getDouble("tempMin") ?? -1.0;
+        Purity_maxLimit = prefs.getDouble('Purity_maxLimit') ?? 0;
+        print("purityyy max data: ${Purity_maxLimit}");
+        Purity_minLimit = prefs.getDouble('Purity_minLimit') ?? 0;
+        Flow_maxLimit = prefs.getDouble('Flow_maxLimit') ?? 0;
+        Flow_minLimit = prefs.getDouble('Flow_minLimit') ?? 0;
+        Pressure_maxLimit = prefs.getDouble('Pressure_maxLimit') ?? 0;
+        Pressure_minLimit = prefs.getDouble('Pressure_minLimit') ?? 0;
+        Temp_maxLimit = prefs.getDouble('Temp_maxLimit') ?? 0;
+        Temp_minLimit = prefs.getDouble('Temp_minLimit') ?? 0;
       });
+      _updateString();
     } catch (e) {
       print("Error loading limits $e");
     }
+    _updateString();
   }
 
   void _addString(String value) {
@@ -416,119 +241,33 @@ class _LineCharWidState extends State<LineCharWid> {
     });
   }
 
-  void _updateString() async {
-    final _db = await AppDbSingleton().database;
+  void _updateString() {
     if (_latestPurity > Purity_maxLimit! || _latestPurity < Purity_minLimit!) {
-      if (countPurity < 3) countPurity++;
-
-      print("skhfvdshvjdbvjh $countPurity");
       // print("Purity max: $Purity_maxLimit");
-      if (countPurity == 1) {
-        // _storeAlarm(
-        //     _latestPurity, Purity_maxLimit!, Purity_minLimit!, "Purity");
-        try {
-          _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestPurity),
-            limitmax: drift.Value(Purity_maxLimit!),
-            limitmin: drift.Value(Purity_minLimit!),
-            type: drift.Value("Purity"),
-            serialNo: drift.Value(_serialNo!),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
-          print("Store Alarms: $storedData");
-        } catch (e) {
-          print("Error to store alarms : $e");
-        }
-      }
-
+      // _storeAlarm(_latestPurity, Purity_maxLimit!, Purity_minLimit!, "Purity");
       _addString("Purity is out of range");
     } else {
-      countPurity == 0;
       _removeString("Purity is out of range");
     }
 
     if (_latestFlowRate > Flow_maxLimit! || _latestFlowRate < Flow_minLimit!) {
-      if (countFlow < 3) countFlow++;
-      if (countFlow == 1) {
-        // _storeAlarm(_latestFlowRate, Flow_maxLimit!, Flow_minLimit!, "Flow");
-        try {
-          _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestFlowRate),
-            limitmax: drift.Value(Flow_maxLimit!),
-            limitmin: drift.Value(Flow_minLimit!),
-            type: drift.Value("Flow"),
-            serialNo: drift.Value(_serialNo!),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
-          print("Store Alarms: $storedData");
-        } catch (e) {
-          print("Error to store alarms : $e");
-        }
-      }
-
+      //  _storeAlarm(_latestFlowRate, Flow_maxLimit!, Flow_minLimit!, "Flow");
       _addString("Flow is out of range");
     } else {
-      countFlow == 0;
       _removeString("Flow is out of range");
     }
 
     if (_latestPressure > Pressure_maxLimit! ||
         _latestPressure < Pressure_minLimit!) {
-      if (countPressure < 3) countPressure++;
-      if (countPressure == 1) {
-        // _storeAlarm(_latestPressure, Pressure_maxLimit!, Pressure_minLimit!,
-        //     "Pressure");
-        try {
-          _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestPressure),
-            limitmax: drift.Value(Pressure_maxLimit!),
-            limitmin: drift.Value(Pressure_minLimit!),
-            type: drift.Value("Pressure"),
-            serialNo: drift.Value(_serialNo!),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
-          print("Store Alarms: $storedData");
-        } catch (e) {
-          print("Error to store alarms : $e");
-        }
-      }
       _addString("Pressure is out of range");
     } else {
-      countPressure == 0;
       _removeString("Pressure is out of range");
     }
 
     if (_latestTemperature > Temp_maxLimit! ||
         _latestTemperature < Temp_minLimit!) {
-      if (countTemp < 3) countTemp++;
-      if (countTemp == 1) {
-        // _storeAlarm(
-        //     _latestTemperature, Temp_maxLimit!, Temp_minLimit!, "Temperature");
-        try {
-          _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestTemperature),
-            limitmax: drift.Value(Temp_maxLimit!!),
-            limitmin: drift.Value(Temp_minLimit!),
-            type: drift.Value("Temperature"),
-            serialNo: drift.Value(_serialNo!),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
-          print("Store Alarms: $storedData");
-        } catch (e) {
-          print("Error to store alarms : $e");
-        }
-      }
       _addString("Temp is out of range");
     } else {
-      countTemp == 0;
       _removeString("Temp is out of range");
     }
   }
@@ -585,6 +324,43 @@ class _LineCharWidState extends State<LineCharWid> {
     ];
 
     return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Center(
+              child: RichText(
+                text: const TextSpan(
+                    text: 'Oxy ',
+                    style: TextStyle(
+                        color: Color.fromARGB(255, 0, 0, 0), fontSize: 25),
+                    children: [
+                      TextSpan(
+                        text: 'Data -',
+                        style: TextStyle(
+                            color: Color.fromARGB(255, 0, 0, 0), fontSize: 25),
+                      ),
+                      TextSpan(
+                        text: ' Oxygen Data Analyser ..',
+                        style: TextStyle(
+                            color: Color.fromARGB(255, 0, 0, 0), fontSize: 20),
+                      ),
+                    ]),
+              ),
+            ),
+          ],
+        ),
+        toolbarHeight: MediaQuery.of(context).size.height * 0.09,
+        backgroundColor: Color.fromRGBO(255, 255, 255, 0.612),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      resizeToAvoidBottomInset: false,
       body: Column(
         children: [
           Expanded(
@@ -595,206 +371,221 @@ class _LineCharWidState extends State<LineCharWid> {
                 Expanded(
                   flex: 9,
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            //  height: screenHeight * 0.20,
-                            child: SfCartesianChart(
-                              plotAreaBorderWidth: 0,
-                              // tooltipBehavior: TooltipBehavior(enable: true),
-                              //  legend: Legend(isVisible: true),
-                              primaryXAxis: NumericAxis(
-                                interval: 10,
-                                labelFormat: '{value}',
-                                axisLabelFormatter:
-                                    (AxisLabelRenderDetails details) {
-                                  int value = details.value.toInt();
-                                  int minutes = value ~/ 60;
-                                  int seconds = value % 60;
-                                  String formattedTime =
-                                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                  return ChartAxisLabel(formattedTime,
-                                      TextStyle(color: Colors.black));
-                                },
-                              ),
-                              primaryYAxis: const NumericAxis(
-                                minimum: 70,
-                                interval: 10,
-                                maximum: 100,
-                                axisLine: AxisLine(width: 0),
-                                majorTickLines: MajorTickLines(size: 0),
-                                title: AxisTitle(text: 'O₂%'),
-                              ),
-                              series: <LineSeries<_ChartData, int>>[
-                                LineSeries<_ChartData, int>(
-                                  onRendererCreated:
-                                      (ChartSeriesController controller) {
-                                    _purityChartController = controller;
+                    padding: const EdgeInsets.only(right: 5),
+                    child: Stack(children: [
+                      Positioned.fill(
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: Text(
+                            "Demo",
+                            style: TextStyle(
+                              fontSize: 100,
+                              color: Colors.black.withOpacity(0.1),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Column(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: Container(
+                              //  height: screenHeight * 0.20,
+                              child: SfCartesianChart(
+                                plotAreaBorderWidth: 0,
+                                // tooltipBehavior: TooltipBehavior(enable: true),
+                                //  legend: Legend(isVisible: true),
+                                primaryXAxis: NumericAxis(
+                                  interval: 10,
+                                  labelFormat: '{value}',
+                                  axisLabelFormatter:
+                                      (AxisLabelRenderDetails details) {
+                                    int value = details.value.toInt();
+                                    int minutes = value ~/ 60;
+                                    int seconds = value % 60;
+                                    String formattedTime =
+                                        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+                                    return ChartAxisLabel(formattedTime,
+                                        TextStyle(color: Colors.black));
                                   },
-                                  dataSource: _purityData,
+                                ),
+                                primaryYAxis: const NumericAxis(
+                                  axisLine: AxisLine(width: 0),
+                                  majorTickLines: MajorTickLines(size: 0),
+                                  title: AxisTitle(text: 'O₂%'),
+                                  minimum: 70,
+                                  maximum: 90,
+                                ),
+                                series: <LineSeries<_ChartData, int>>[
+                                  LineSeries<_ChartData, int>(
+                                    onRendererCreated:
+                                        (ChartSeriesController controller) {
+                                      _purityChartController = controller;
+                                    },
+                                    dataSource: _purityData,
 
-                                  xValueMapper: (_ChartData press, _) =>
-                                      press.time,
-                                  yValueMapper: (_ChartData press, _) =>
-                                      press.value,
-                                  //  markerSettings: const MarkerSettings(isVisible: true),
-                                  color: const Color.fromARGB(255, 0, 34, 145),
-                                  name: "Purity",
-                                ),
-                              ],
+                                    xValueMapper: (_ChartData press, _) =>
+                                        press.time,
+                                    yValueMapper: (_ChartData press, _) =>
+                                        press.value,
+                                    //  markerSettings: const MarkerSettings(isVisible: true),
+                                    color:
+                                        const Color.fromARGB(255, 0, 34, 145),
+                                    name: "Purity",
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            // height: MediaQuery.of(context).size.height * 0.21,
-                            child: SfCartesianChart(
-                              plotAreaBorderWidth: 0,
-                              // tooltipBehavior: TooltipBehavior(enable: true),
-                              //  legend: Legend(isVisible: true),
-                              primaryXAxis: NumericAxis(
-                                interval: 10,
-                                labelFormat: '{value}',
-                                axisLabelFormatter:
-                                    (AxisLabelRenderDetails details) {
-                                  int value = details.value.toInt();
-                                  int minutes = value ~/ 60;
-                                  int seconds = value % 60;
-                                  String formattedTime =
-                                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                  return ChartAxisLabel(formattedTime,
-                                      TextStyle(color: Colors.black));
-                                },
-                              ),
-                              primaryYAxis: const NumericAxis(
-                                maximum: 40,
-                                interval: 20,
-                                minimum: 0,
-                                axisLine: AxisLine(width: 0),
-                                majorTickLines: MajorTickLines(size: 0),
-                                title: AxisTitle(text: 'LPM'),
-                              ),
-                              series: <LineSeries<_ChartData, int>>[
-                                LineSeries<_ChartData, int>(
-                                  onRendererCreated:
-                                      (ChartSeriesController controller) {
-                                    _flowRateChartController = controller;
-                                  },
-                                  dataSource: _flowRateData,
-                                  xValueMapper: (_ChartData press, _) =>
-                                      press.time,
-                                  yValueMapper: (_ChartData press, _) =>
-                                      press.value,
-                                  // markerSettings: const MarkerSettings(isVisible: true),
-                                  color: Color.fromARGB(255, 248, 213, 40),
-                                  name: "Flow",
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            //  height: MediaQuery.of(context).size.height * 0.21,
-                            child: SfCartesianChart(
-                              // plotAreaBorderWidth: 0,
-                              //tooltipBehavior: TooltipBehavior(enable: true),
-                              //  legend: Legend(isVisible: true),
-                              primaryXAxis: NumericAxis(
-                                interval: 10,
-                                labelFormat: '{value}',
-                                axisLabelFormatter:
-                                    (AxisLabelRenderDetails details) {
-                                  int value = details.value.toInt();
-                                  int minutes = value ~/ 60;
-                                  int seconds = value % 60;
-                                  String formattedTime =
-                                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                  return ChartAxisLabel(formattedTime,
-                                      TextStyle(color: Colors.black));
-                                },
-                              ),
-                              primaryYAxis: const NumericAxis(
-                                maximum: 40,
-                                interval: 20,
-                                minimum: 0,
-                                axisLine: AxisLine(width: 0),
-                                majorTickLines: MajorTickLines(size: 0),
-                                title: AxisTitle(text: 'PSI'),
-                              ),
-                              series: <LineSeries<_ChartData, int>>[
-                                LineSeries<_ChartData, int>(
-                                  onRendererCreated:
-                                      (ChartSeriesController controller) {
-                                    _pressureChartController = controller;
-                                  },
-                                  dataSource: _pressureData,
-                                  xValueMapper: (_ChartData press, _) =>
-                                      press.time,
-                                  yValueMapper: (_ChartData press, _) =>
-                                      press.value,
-                                  //markerSettings: const MarkerSettings(isVisible: true),
-                                  color: const Color.fromARGB(255, 195, 0, 0),
-
-                                  name: "Pressure",
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Container(
+                          Expanded(
+                            flex: 1,
+                            child: Container(
                               // height: MediaQuery.of(context).size.height * 0.21,
                               child: SfCartesianChart(
-                            plotAreaBorderWidth: 0,
-                            // tooltipBehavior: TooltipBehavior(enable: true),
-                            //  legend: Legend(isVisible: true),
-                            primaryXAxis: NumericAxis(
-                              interval: 10,
-                              labelFormat: '{value}',
-                              axisLabelFormatter:
-                                  (AxisLabelRenderDetails details) {
-                                int value = details.value.toInt();
-                                int minutes = value ~/ 60;
-                                int seconds = value % 60;
-                                String formattedTime =
-                                    '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                return ChartAxisLabel(formattedTime,
-                                    TextStyle(color: Colors.black));
-                              },
-                            ),
-                            primaryYAxis: const NumericAxis(
-                              maximum: 50,
-                              interval: 25,
-                              minimum: 0,
-                              axisLine: AxisLine(width: 0),
-                              majorTickLines: MajorTickLines(size: 0),
-                              title: AxisTitle(text: '°C'),
-                            ),
-                            series: <LineSeries<_ChartData, int>>[
-                              LineSeries<_ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _temperatureChartController = controller;
-                                },
-                                dataSource: _temperatureData,
-                                xValueMapper: (data, _) => data.time,
-                                yValueMapper: (data, _) => data.value,
-                                //markerSettings: const MarkerSettings(isVisible: true),
-                                color: Color.fromARGB(255, 44, 238, 144),
-                                name: "Temp",
+                                plotAreaBorderWidth: 0,
+                                // tooltipBehavior: TooltipBehavior(enable: true),
+                                //  legend: Legend(isVisible: true),
+                                primaryXAxis: NumericAxis(
+                                  interval: 10,
+                                  labelFormat: '{value}',
+                                  axisLabelFormatter:
+                                      (AxisLabelRenderDetails details) {
+                                    int value = details.value.toInt();
+                                    int minutes = value ~/ 60;
+                                    int seconds = value % 60;
+                                    String formattedTime =
+                                        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+                                    return ChartAxisLabel(formattedTime,
+                                        TextStyle(color: Colors.black));
+                                  },
+                                ),
+                                primaryYAxis: const NumericAxis(
+                                  maximum: 40,
+                                  interval: 20,
+                                  minimum: 0,
+                                  axisLine: AxisLine(width: 0),
+                                  majorTickLines: MajorTickLines(size: 0),
+                                  title: AxisTitle(text: 'LPM'),
+                                ),
+                                series: <LineSeries<_ChartData, int>>[
+                                  LineSeries<_ChartData, int>(
+                                    onRendererCreated:
+                                        (ChartSeriesController controller) {
+                                      _flowRateChartController = controller;
+                                    },
+                                    dataSource: _flowRateData,
+                                    xValueMapper: (_ChartData press, _) =>
+                                        press.time,
+                                    yValueMapper: (_ChartData press, _) =>
+                                        press.value,
+                                    // markerSettings: const MarkerSettings(isVisible: true),
+                                    color: Color.fromARGB(255, 248, 213, 40),
+                                    name: "Flow",
+                                  ),
+                                ],
                               ),
-                            ],
-                          )),
-                        ),
-                      ],
-                    ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Container(
+                              //  height: MediaQuery.of(context).size.height * 0.21,
+                              child: SfCartesianChart(
+                                // plotAreaBorderWidth: 0,
+                                //tooltipBehavior: TooltipBehavior(enable: true),
+                                //  legend: Legend(isVisible: true),
+                                primaryXAxis: NumericAxis(
+                                  interval: 10,
+                                  labelFormat: '{value}',
+                                  axisLabelFormatter:
+                                      (AxisLabelRenderDetails details) {
+                                    int value = details.value.toInt();
+                                    int minutes = value ~/ 60;
+                                    int seconds = value % 60;
+                                    String formattedTime =
+                                        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+                                    return ChartAxisLabel(formattedTime,
+                                        TextStyle(color: Colors.black));
+                                  },
+                                ),
+                                primaryYAxis: const NumericAxis(
+                                  maximum: 40,
+                                  interval: 20,
+                                  minimum: 0,
+                                  axisLine: AxisLine(width: 0),
+                                  majorTickLines: MajorTickLines(size: 0),
+                                  title: AxisTitle(text: 'PSI'),
+                                ),
+                                series: <LineSeries<_ChartData, int>>[
+                                  LineSeries<_ChartData, int>(
+                                    onRendererCreated:
+                                        (ChartSeriesController controller) {
+                                      _pressureChartController = controller;
+                                    },
+                                    dataSource: _pressureData,
+                                    xValueMapper: (_ChartData press, _) =>
+                                        press.time,
+                                    yValueMapper: (_ChartData press, _) =>
+                                        press.value,
+                                    //markerSettings: const MarkerSettings(isVisible: true),
+                                    color: const Color.fromARGB(255, 195, 0, 0),
+
+                                    name: "Pressure",
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Container(
+                                // height: MediaQuery.of(context).size.height * 0.21,
+                                child: SfCartesianChart(
+                              plotAreaBorderWidth: 0,
+                              // tooltipBehavior: TooltipBehavior(enable: true),
+                              //  legend: Legend(isVisible: true),
+                              primaryXAxis: NumericAxis(
+                                interval: 10,
+                                labelFormat: '{value}',
+                                axisLabelFormatter:
+                                    (AxisLabelRenderDetails details) {
+                                  int value = details.value.toInt();
+                                  int minutes = value ~/ 60;
+                                  int seconds = value % 60;
+                                  String formattedTime =
+                                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+                                  return ChartAxisLabel(formattedTime,
+                                      TextStyle(color: Colors.black));
+                                },
+                              ),
+                              primaryYAxis: const NumericAxis(
+                                maximum: 50,
+                                interval: 25,
+                                minimum: 0,
+                                axisLine: AxisLine(width: 0),
+                                majorTickLines: MajorTickLines(size: 0),
+                                title: AxisTitle(text: '°C'),
+                              ),
+                              series: <LineSeries<_ChartData, int>>[
+                                LineSeries<_ChartData, int>(
+                                  onRendererCreated:
+                                      (ChartSeriesController controller) {
+                                    _temperatureChartController = controller;
+                                  },
+                                  dataSource: _temperatureData,
+                                  xValueMapper: (data, _) => data.time,
+                                  yValueMapper: (data, _) => data.value,
+                                  //markerSettings: const MarkerSettings(isVisible: true),
+                                  color: Color.fromARGB(255, 44, 238, 144),
+                                  name: "Temp",
+                                ),
+                              ],
+                            )),
+                          ),
+                        ],
+                      ),
+                    ]),
                   ),
                 ),
                 // Parameters on the right
@@ -908,13 +699,7 @@ class _LineCharWidState extends State<LineCharWid> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () async {
-                              final db = await AppDbSingleton().database;
-                              await db.deleteAllAlarms();
-                              // await db.customUpdate(
-                              //     'DELETE FROM sqlite_sequence WHERE name = "limit_settings_table";');
-                              print("All limit settings have been deleted.");
-                            },
+                            onTap: () async {},
                             child: Container(
                               height:
                                   MediaQuery.of(context).size.height * 0.145,
@@ -1059,10 +844,8 @@ class _LineCharWidState extends State<LineCharWid> {
                               Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => ReportScreen(
-                                            data: _cache,
-                                            serialNo: _serialNo!,
-                                          )));
+                                      builder: (context) =>
+                                          DemoReportScreen(data: _cache)));
                             },
                             child: Container(
                               height:
@@ -1156,106 +939,34 @@ class _LineCharWidState extends State<LineCharWid> {
   double _latestPressure = 0.0;
   double _latestTemperature = 0.0;
 
-  String? _serialNo;
   bool _isRunning = false;
-  List<Map<String, dynamic>> _cache = [];
 
   Future<void> getData() async {
-    print("Max purity: ${Purity_maxLimit}");
-    var url = Uri.parse('http://192.168.4.1/getdata');
-
     try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
+      double purity = 80 + Random().nextInt(10).toDouble();
+      double flowRate = 10 + Random().nextInt(10).toDouble();
+      double pressure = 0 + Random().nextInt(20).toDouble();
+      double temperature = 30 + Random().nextInt(10).toDouble();
 
-        if (data.isNotEmpty) {
-          Map<String, dynamic> jsonData = data[0];
-          double purity = double.tryParse(jsonData['Purity'] ?? '0.0')!;
-          double flowRate = double.tryParse(jsonData['Flow_Rate'] ?? '0.0')!;
-          double pressure = double.tryParse(jsonData['Pressure'] ?? '0.0')!;
-          double temperature =
-              double.tryParse(jsonData['Temperature'] ?? '0.0')!;
-          _serialNo = jsonData['serialNo'] ?? '';
+      purityList.add(purity);
+      flowRateList.add(flowRate);
+      pressureList.add(pressure);
+      temperatureList.add(temperature);
+      // Store data in cache
+      setState(() {
+        _cache.add({
+          'purity': purity,
+          'flowRate': flowRate,
+          'pressure': pressure,
+          'temperature': temperature,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      });
 
-          purityList.add(purity);
-          flowRateList.add(flowRate);
-          pressureList.add(pressure);
-          temperatureList.add(temperature);
-
-          // Store data in cache
-          setState(() {
-            _cache.add({
-              'purity': purity,
-              'flowRate': flowRate,
-              'pressure': pressure,
-              'temperature': temperature,
-              'timestamp': DateTime.now().toIso8601String(),
-            });
-          });
-
-          // Add data to stream controllers
-          _purityController.add(purity);
-          _flowRateController.add(flowRate);
-          _pressureController.add(pressure);
-          _temperatureController.add(temperature);
-        }
-      } else {
-        throw Exception('Failed to load data');
-      }
-    } catch (e, stackTrace) {
-      print('Error parsing data: $e');
-      print("error=> $stackTrace");
-
-      // Handle the error appropriately
-    }
-  }
-
-  Future<void> printStoredData() async {
-    final _db = await AppDbSingleton().database;
-    List<OxyDatabaseData> storedData = await _db.getAllOxyData();
-    for (var data in storedData) {
-      print(
-          'ID: ${data.id}, Purity: ${data.purity}, Flow Rate: ${data.flow}, Pressure: ${data.pressure}, Temperature: ${data.temp}, Serial No: ${data.serialNo}, DateTime: ${data.recordedAt}');
-    }
-
-    print('Stored Data: ${_cache.length}');
-  }
-
-  Future<void> storeAverageData() async {
-    final _db = await AppDbSingleton().database;
-    String? serialNo = _serialNo;
-    DateTime dateTime = DateTime.now();
-    var url_1m = Uri.parse('http://192.168.4.1/getdata_1m');
-    try {
-      final response = await http.get(url_1m);
-      if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
-
-        if (data.isNotEmpty) {
-          Map<String, dynamic> jsonData = data[0];
-          double purity = double.tryParse(jsonData['Purity'] ?? '0.0')!;
-          double flowRate = double.tryParse(jsonData['Flow_Rate'] ?? '0.0')!;
-          double pressure = double.tryParse(jsonData['Pressure'] ?? '0.0')!;
-          double temperature =
-              double.tryParse(jsonData['Temperature'] ?? '0.0')!;
-          _serialNo = jsonData['serialNo'] ?? '';
-
-          final entity = OxyDatabaseCompanion(
-            purity: drift.Value(purity),
-            flow: drift.Value(flowRate),
-            pressure: drift.Value(pressure),
-            temp: drift.Value(temperature),
-            serialNo: drift.Value(serialNo!),
-            recordedAt: drift.Value(dateTime),
-          );
-
-          await _db.insertOxyData(entity);
-          printStoredData();
-        }
-      } else {
-        throw Exception('Failed to load data');
-      }
+      _purityController.add(purity);
+      _flowRateController.add(flowRate);
+      _pressureController.add(pressure);
+      _temperatureController.add(temperature);
     } catch (e, stackTrace) {
       print('Error parsing data: $e');
       print("error=> $stackTrace");
