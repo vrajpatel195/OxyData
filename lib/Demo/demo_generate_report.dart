@@ -1,13 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DemoGenerateReport {
@@ -21,7 +19,6 @@ class DemoGenerateReport {
     required this.title,
   });
 
-  String _currentDateTime = _formatDateTime(DateTime.now());
   late double _minPurity = 0.0;
   late double _maxPurity = 0.0;
   late double _avgPurity = 0.0;

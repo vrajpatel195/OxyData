@@ -24,19 +24,19 @@ class _PressureSettingState extends State<PressureSetting> {
   double pressuremax = 0.0;
   double pressuremin = 0.0;
   String? serialNo;
-  // Added this to track if data is loaded
+
+  int _holdTime = 0;
+  Duration _incrementDuration = Duration(milliseconds: 300); // Slow speed
 
   @override
   void initState() {
     pressuremax = widget.max;
     pressuremin = widget.min;
-
     super.initState();
   }
 
   Future<void> _saveToSharedPreferences() async {
     final _db = await AppDbSingleton().database;
-
     final prefs = await SharedPreferences.getInstance();
 
     double max = double.parse(pressuremax.toStringAsFixed(1));
@@ -47,7 +47,6 @@ class _PressureSettingState extends State<PressureSetting> {
 
     DateTime dateTime = DateTime.now();
     serialNo = prefs.getString('serialNo') ?? "";
-    print("Heloooooooo");
     try {
       await _db.insertLimitSetting(LimitSettingsTableCompanion(
         limit_max: drift.Value(max),
@@ -59,9 +58,6 @@ class _PressureSettingState extends State<PressureSetting> {
     } catch (e) {
       print("Error pressure max --> $e");
     }
-
-    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-    print("Storedddd data =>   $storedData");
   }
 
   @override
@@ -74,6 +70,7 @@ class _PressureSettingState extends State<PressureSetting> {
   void _incrementMaxLimit() {
     setState(() {
       double newMax = pressuremax + 0.1;
+
       if (newMax > pressuremin) {
         pressuremax = newMax;
       }
@@ -83,6 +80,7 @@ class _PressureSettingState extends State<PressureSetting> {
   void _decrementMaxLimit() {
     setState(() {
       double newMax = pressuremax - 0.1;
+
       if (newMax > pressuremin) {
         pressuremax = newMax;
       }
@@ -92,6 +90,7 @@ class _PressureSettingState extends State<PressureSetting> {
   void _incrementMinLimit() {
     setState(() {
       double newMin = pressuremin + 0.1;
+
       if (newMin < pressuremax) {
         pressuremin = newMin;
       }
@@ -101,30 +100,96 @@ class _PressureSettingState extends State<PressureSetting> {
   void _decrementMinLimit() {
     setState(() {
       double newMin = pressuremin - 0.1;
+
       if (newMin >= 0) {
         pressuremin = newMin;
       }
     });
   }
 
+  // Dynamic speed adjustment for incrementing
   void _startIncrementTimer(VoidCallback callback) {
-    _incrementTimer = Timer.periodic(Duration(milliseconds: 120), (_) {
+    _incrementValue(callback);
+    _incrementTimer = Timer.periodic(_incrementDuration, (timer) {
+      _incrementValue(callback);
+    });
+  }
+
+  void _incrementValue(VoidCallback callback) {
+    setState(() {
+      _holdTime++;
       callback();
+      if (_holdTime == 2) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 250), callback); // Medium speed
+      } else if (_holdTime == 5) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 150), callback); // Fast speed
+      } else if (_holdTime == 10) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 100), callback); // Fast speed
+      } else if (_holdTime == 20) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 75), callback); // Fast speed
+      }
+    });
+  }
+
+  void _resetIncrementTimer(Duration duration, VoidCallback callback) {
+    _incrementTimer?.cancel();
+    _incrementTimer = Timer.periodic(duration, (timer) {
+      _incrementValue(callback); // Pass the actual increment logic
     });
   }
 
   void _stopIncrementTimer() {
     _incrementTimer?.cancel();
+    _holdTime = 0; // Reset hold time when the button is released
+    _incrementDuration = Duration(milliseconds: 300); // Reset to slow speed
   }
 
+  // Dynamic speed adjustment for decrementing
   void _startDecrementTimer(VoidCallback callback) {
-    _decrementTimer = Timer.periodic(Duration(milliseconds: 120), (_) {
+    _decrementValue(callback);
+    _decrementTimer = Timer.periodic(_incrementDuration, (timer) {
+      _decrementValue(callback);
+    });
+  }
+
+  void _decrementValue(VoidCallback callback) {
+    setState(() {
+      _holdTime++;
       callback();
+      if (_holdTime == 2) {
+        _resetDecrementTimer(
+            Duration(milliseconds: 250), callback); // Medium speed
+      } else if (_holdTime == 5) {
+        _resetDecrementTimer(
+            Duration(milliseconds: 150), callback); // Fast speed
+      } else if (_holdTime == 8) {
+        _resetDecrementTimer(
+            Duration(milliseconds: 100), callback); // Fast speed
+      } else if (_holdTime == 11) {
+        _resetDecrementTimer(
+            Duration(milliseconds: 75), callback); // Fast speed
+      } else if (_holdTime == 15) {
+        _resetDecrementTimer(
+            Duration(milliseconds: 50), callback); // Fast speed
+      }
+    });
+  }
+
+  void _resetDecrementTimer(Duration duration, VoidCallback callback) {
+    _decrementTimer?.cancel();
+    _decrementTimer = Timer.periodic(duration, (timer) {
+      _decrementValue(callback); // Pass the actual decrement logic
     });
   }
 
   void _stopDecrementTimer() {
     _decrementTimer?.cancel();
+    _holdTime = 0; // Reset hold time
+    _incrementDuration = Duration(milliseconds: 300); // Reset to slow speed
   }
 
   @override
@@ -218,21 +283,20 @@ class _PressureSettingState extends State<PressureSetting> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: decrement,
           onTapDown: (_) {
-            _startIncrementTimer(decrement);
+            _startDecrementTimer(decrement);
           },
           onTapUp: (_) {
-            _stopIncrementTimer();
+            _stopDecrementTimer();
           },
           onTapCancel: () {
-            _stopIncrementTimer();
+            _stopDecrementTimer();
           },
-          child: Icon(Icons.remove, size: screenHeight / 10),
+          child: Icon(Icons.remove, size: screenHeight / 8),
         ),
         Container(
           height: screenHeight * 0.30,
-          width: screenWidth / 5,
+          width: screenWidth / 4.5,
           child: Card(
             color: const Color.fromARGB(255, 195, 0, 0),
             child: Column(
@@ -254,17 +318,16 @@ class _PressureSettingState extends State<PressureSetting> {
           ),
         ),
         GestureDetector(
-          onTap: increment,
           onTapDown: (_) {
-            _startDecrementTimer(increment);
+            _startIncrementTimer(increment);
           },
           onTapUp: (_) {
-            _stopDecrementTimer();
+            _stopIncrementTimer();
           },
           onTapCancel: () {
-            _stopDecrementTimer();
+            _stopIncrementTimer();
           },
-          child: Icon(Icons.add, size: screenHeight / 10),
+          child: Icon(Icons.add, size: screenHeight / 8),
         ),
       ],
     );

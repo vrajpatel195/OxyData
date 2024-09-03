@@ -1,4 +1,7 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:async';
+
 import 'dart:convert';
 
 import 'package:drift/drift.dart' as drift;
@@ -11,7 +14,7 @@ import 'package:oxydata/LimitSetting.dart/flow_setting.dart';
 import 'package:oxydata/LimitSetting.dart/pressure_setting.dart';
 import 'package:oxydata/LimitSetting.dart/temp_setting.dart';
 import 'package:oxydata/model/model.dart';
-import 'package:oxydata/screens/report_screen.dart';
+import 'package:oxydata/Report_screens/report_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,8 +28,10 @@ import '../LimitSetting.dart/api_service.dart';
 import '../LimitSetting.dart/min_max_data.dart';
 
 import '../LimitSetting.dart/purity_setting.dart';
+import '../widgets/editDetailsDialog.dart';
 
 class LineCharWid extends StatefulWidget {
+  // ignore: use_super_parameters
   const LineCharWid({Key? key}) : super(key: key);
 
   @override
@@ -47,16 +52,13 @@ class _LineCharWidState extends State<LineCharWid> {
   double? Temp_maxLimit;
   double? Temp_minLimit;
 
-  int countPurity = 0;
-  int countPressure = 0;
-  int countFlow = 0;
-  int countTemp = 0;
+  DateTime? appStartTime;
 
   int time = 0;
 
   int _currentIndex = 0;
   String _currentString = 'SYSTEM IS RUNNING OK';
-  Set<String> _uniqueStrings = {};
+  final Set<String> _uniqueStrings = {};
   List<String> _uniqueStringList = [];
 
   // final StreamController<List<ChartData>> _streamController =
@@ -65,7 +67,7 @@ class _LineCharWidState extends State<LineCharWid> {
   // Fixed color map for predefined types
   final Map<String, Color> colorMap = {
     'purity': const Color.fromARGB(255, 0, 34, 145),
-    'flow': Color.fromARGB(182, 241, 193, 48),
+    'flow': const Color.fromARGB(182, 241, 193, 48),
     'pressure': Colors.red,
     'temp': const Color.fromARGB(255, 44, 238, 144),
   };
@@ -150,25 +152,32 @@ class _LineCharWidState extends State<LineCharWid> {
     }
   }
 
+  void _showEditDetailsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return EditDetailsDialog();
+      },
+    );
+  }
+
   late StreamController<void> _updateController;
   late StreamSubscription<void> _streamSubscription;
 
   @override
   void initState() {
     super.initState();
-
+    appStartTime = DateTime.now();
     _saveLimits();
     _initialData();
 
     _updateController = StreamController<void>.broadcast();
 
-    _streamSubscription = _updateController.stream.listen((_) {
-      _updateString();
-    });
     if (_isRunning) return;
-    Timer.periodic(Duration(seconds: 1), (timer) async {
-      _saveLimits();
+    Timer.periodic(const Duration(seconds: 1), (timer) async {
+      await _saveLimits();
       await getData();
+
       _updateController.add(null);
       time++;
       _updateCurrentString();
@@ -194,6 +203,7 @@ class _LineCharWidState extends State<LineCharWid> {
         if (_flowRateData.length > 61) _flowRateData.removeAt(0);
         _latestFlowRate = data;
       });
+
       _updateDataSource();
     });
     _pressureSubscription = _pressureController.stream.listen((data) {
@@ -202,6 +212,7 @@ class _LineCharWidState extends State<LineCharWid> {
         if (_pressureData.length > 61) _pressureData.removeAt(0);
         _latestPressure = data;
       });
+
       _updateDataSource();
     });
     _temperatureSubscription = _temperatureController.stream.listen((data) {
@@ -210,7 +221,16 @@ class _LineCharWidState extends State<LineCharWid> {
         if (_temperatureData.length > 61) _temperatureData.removeAt(0);
         _latestTemperature = data;
       });
+
       _updateDataSource();
+    });
+    _streamSubscription = _updateController.stream.listen((_) {
+      if (_latestPurity != null &&
+          _latestFlowRate != null &&
+          _latestPressure != null &&
+          _latestTemperature != null) {
+        _updateString();
+      }
     });
   }
 
@@ -246,13 +266,11 @@ class _LineCharWidState extends State<LineCharWid> {
 
   Future<Tuple2<double, double>?> setMinMax(String gasName) async {
     final data = await ApiService.fetchMinMaxData();
-    print(("sjvhdisfhvidhvdiuh: ${data.o2Max}"));
     switch (gasName) {
       case "O2":
         return Tuple2(double.parse(data.o2Max), double.parse(data.o2Min));
 
       case "Flow":
-        print("Valeu Of MinMAx  ==> F ${data.flowMax}");
         return Tuple2(double.parse(data.flowMax), double.parse(data.flowMin));
 
       case "Pr":
@@ -274,19 +292,13 @@ class _LineCharWidState extends State<LineCharWid> {
     final _db = await AppDbSingleton().database;
     await _loadLimits();
 
-    print(
-        "Purity maxxxlimit ===> ${Purity_maxLimit!.toString()}    ${data.o2Max}");
-    print(
-        "Pressure maxxxlimit ===> ${Pressure_maxLimit!.toString()}    ${data.pressureMax}");
-    if ((Purity_maxLimit!).toString() != data.o2Max &&
+    if ((Purity_maxLimit!).toString() != data.o2Max ||
         (Purity_minLimit!).toString() != data.o2Min) {
-      print(
-          "Purity maxxxlimit ===> ${(Purity_maxLimit!).toString()}    ${data.o2Max}");
       try {
         await _db.insertLimitSetting(LimitSettingsTableCompanion(
           limit_max: drift.Value(double.tryParse(data.o2Max)!),
           limit_min: drift.Value(double.tryParse(data.o2Min)!),
-          type: drift.Value("Purity"),
+          type: const drift.Value("Purity"),
           serialNo: drift.Value(data.serialNo),
           recordedAt: drift.Value(DateTime.now()),
         ));
@@ -296,64 +308,47 @@ class _LineCharWidState extends State<LineCharWid> {
 
       await prefs.setDouble('purityMax', double.tryParse(data.o2Max)!);
       await prefs.setDouble('purityMin', double.tryParse(data.o2Min)!);
-
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
     }
 
-    if ((Flow_maxLimit!).toString() != data.flowMax &&
+    if ((Flow_maxLimit!).toString() != data.flowMax ||
         (Flow_minLimit!).toString() != data.flowMin) {
       await _db.insertLimitSetting(LimitSettingsTableCompanion(
         limit_max: drift.Value(double.tryParse(data.flowMax)!),
         limit_min: drift.Value(double.tryParse(data.flowMin)!),
-        type: drift.Value("Flow"),
+        type: const drift.Value("Flow"),
         serialNo: drift.Value(data.serialNo),
         recordedAt: drift.Value(DateTime.now()),
       ));
       await prefs.setDouble('flowMax', double.tryParse(data.flowMax)!);
       await prefs.setDouble('flowMin', double.tryParse(data.flowMin)!);
-
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
     }
     print(
         "Pressure maxxxlimit ===> ${(Pressure_maxLimit!).toString()}    ${data.pressureMax}");
-    if ((Pressure_maxLimit!).toString() != data.pressureMax &&
+    if ((Pressure_maxLimit!).toString() != data.pressureMax ||
         (Pressure_minLimit!).toString() != data.pressureMin) {
       await _db.insertLimitSetting(LimitSettingsTableCompanion(
         limit_max: drift.Value(double.tryParse(data.pressureMax)!),
         limit_min: drift.Value(double.tryParse(data.pressureMin)!),
-        type: drift.Value("Pressure"),
+        type: const drift.Value("Pressure"),
         serialNo: drift.Value(data.serialNo),
         recordedAt: drift.Value(DateTime.now()),
       ));
       await prefs.setDouble('pressureMax', double.tryParse(data.pressureMax)!);
       await prefs.setDouble('pressureMin', double.tryParse(data.pressureMin)!);
-
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
     }
-    print(
-        "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
-    if ((Temp_maxLimit!).toString() != data.temperatureMax &&
+
+    if ((Temp_maxLimit!).toString() != data.temperatureMax ||
         (Temp_minLimit!).toString() != data.temperatureMin) {
-      print(
-          "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
       await _db.insertLimitSetting(LimitSettingsTableCompanion(
         limit_max: drift.Value(double.tryParse(data.temperatureMax)!),
         limit_min: drift.Value(double.tryParse(data.temperatureMin)!),
-        type: drift.Value("Temperature"),
+        type: const drift.Value("Temperature"),
         serialNo: drift.Value(data.serialNo),
         recordedAt: drift.Value(DateTime.now()),
       ));
-      print(
-          "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
+
       await prefs.setDouble('tempMax', double.tryParse(data.temperatureMax)!);
       await prefs.setDouble('tempMin', double.tryParse(data.temperatureMin)!);
-      print(
-          "Temp maxxxlimit ===> ${(Temp_maxLimit!).toString()}    ${data.temperatureMax}");
-      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-      print("Storedddd data =>   $storedData");
     }
 
     await prefs.setString('serialNo', data.serialNo);
@@ -381,6 +376,7 @@ class _LineCharWidState extends State<LineCharWid> {
     } catch (e) {
       print("Error loading limits $e");
     }
+    _updateString();
   }
 
   void _addString(String value) {
@@ -416,109 +412,121 @@ class _LineCharWidState extends State<LineCharWid> {
     });
   }
 
+  String serialNo = " ";
   void _updateString() async {
     final _db = await AppDbSingleton().database;
-    if (_latestPurity > Purity_maxLimit! || _latestPurity < Purity_minLimit!) {
-      if (countPurity < 3) countPurity++;
-
-      print("skhfvdshvjdbvjh $countPurity");
+    final prefs = await SharedPreferences.getInstance();
+    serialNo = await prefs.getString('serialNo') ?? '';
+    if (_latestPurity! > Purity_maxLimit! ||
+        _latestPurity! < Purity_minLimit!) {
       // print("Purity max: $Purity_maxLimit");
-      if (countPurity == 1) {
-        // _storeAlarm(
-        //     _latestPurity, Purity_maxLimit!, Purity_minLimit!, "Purity");
+
+      double previousPurity = prefs.getDouble("PurityP") ?? -1.0;
+      if (_latestPurity != previousPurity) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestPurity),
+            value: drift.Value(_latestPurity!),
             limitmax: drift.Value(Purity_maxLimit!),
             limitmin: drift.Value(Purity_minLimit!),
             type: drift.Value("Purity"),
-            serialNo: drift.Value(_serialNo!),
+            serialNo: drift.Value(serialNo),
             recordedAt: drift.Value(DateTime.now()),
           ));
-
+          prefs.setDouble("PurityP", _latestPurity!);
           List<AlarmTableData> storedData = await _db.getAllAlarms();
           print("Store Alarms: $storedData");
         } catch (e) {
           print("Error to store alarms : $e");
         }
       }
-
-      _addString("Purity is out of range");
+      if (_latestPurity! > Purity_maxLimit!) {
+        _addString("Purity is Higher than Limit");
+      } else {
+        _addString("Purity is Lower than Limit");
+      }
     } else {
-      countPurity == 0;
-      _removeString("Purity is out of range");
+      _removeString("Purity is Higher than Limit");
+      _removeString("Purity is Lower than Limit");
     }
 
-    if (_latestFlowRate > Flow_maxLimit! || _latestFlowRate < Flow_minLimit!) {
-      if (countFlow < 3) countFlow++;
-      if (countFlow == 1) {
-        // _storeAlarm(_latestFlowRate, Flow_maxLimit!, Flow_minLimit!, "Flow");
+    if ((_latestFlowRate! > Flow_maxLimit! ||
+            _latestFlowRate! < Flow_minLimit!) &&
+        printvalue != 111 &&
+        printvalue != 112) {
+      double previousFlow = prefs.getDouble("FlowP") ?? -1.0;
+      if (_latestFlowRate != previousFlow) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestFlowRate),
+            value: drift.Value(_latestFlowRate!),
             limitmax: drift.Value(Flow_maxLimit!),
             limitmin: drift.Value(Flow_minLimit!),
             type: drift.Value("Flow"),
-            serialNo: drift.Value(_serialNo!),
+            serialNo: drift.Value(serialNo),
             recordedAt: drift.Value(DateTime.now()),
           ));
-
+          prefs.setDouble("FlowP", _latestFlowRate!);
           List<AlarmTableData> storedData = await _db.getAllAlarms();
           print("Store Alarms: $storedData");
         } catch (e) {
           print("Error to store alarms : $e");
         }
       }
-
-      _addString("Flow is out of range");
+      if (_latestFlowRate! > Flow_maxLimit!) {
+        _addString("Flow is Higher than Limit");
+      } else {
+        _addString("Flow is Lower than Limit");
+      }
     } else {
-      countFlow == 0;
-      _removeString("Flow is out of range");
+      _removeString("Flow is Higher than Limit");
+      _removeString("Flow is Lower than Limit");
     }
 
-    if (_latestPressure > Pressure_maxLimit! ||
-        _latestPressure < Pressure_minLimit!) {
-      if (countPressure < 3) countPressure++;
-      if (countPressure == 1) {
-        // _storeAlarm(_latestPressure, Pressure_maxLimit!, Pressure_minLimit!,
-        //     "Pressure");
+    if ((_latestPressure! > Pressure_maxLimit! ||
+            _latestPressure! < Pressure_minLimit!) &&
+        printvalue != 111) {
+      double previousPressure = prefs.getDouble("PressureP") ?? -1.0;
+      if (_latestPressure != previousPressure) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestPressure),
+            value: drift.Value(_latestPressure!),
             limitmax: drift.Value(Pressure_maxLimit!),
             limitmin: drift.Value(Pressure_minLimit!),
             type: drift.Value("Pressure"),
-            serialNo: drift.Value(_serialNo!),
+            serialNo: drift.Value(serialNo),
             recordedAt: drift.Value(DateTime.now()),
           ));
-
+          prefs.setDouble("PressureP", _latestPressure!);
           List<AlarmTableData> storedData = await _db.getAllAlarms();
           print("Store Alarms: $storedData");
         } catch (e) {
           print("Error to store alarms : $e");
         }
       }
-      _addString("Pressure is out of range");
+      if (_latestPressure! > Pressure_maxLimit!) {
+        _addString("Pressure is Higher than Limit");
+      } else {
+        _addString("Pressure is Lower than Limit");
+      }
     } else {
-      countPressure == 0;
-      _removeString("Pressure is out of range");
+      _removeString("Pressure is Higher than Limit");
+      _removeString("Pressure is Lower than Limit");
     }
 
-    if (_latestTemperature > Temp_maxLimit! ||
-        _latestTemperature < Temp_minLimit!) {
-      if (countTemp < 3) countTemp++;
-      if (countTemp == 1) {
-        // _storeAlarm(
-        //     _latestTemperature, Temp_maxLimit!, Temp_minLimit!, "Temperature");
+    if (_latestTemperature! > Temp_maxLimit! ||
+        _latestTemperature! < Temp_minLimit!) {
+      double previousTemp = prefs.getDouble("TempP") ?? -1.0;
+      if (_latestTemperature != previousTemp) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestTemperature),
-            limitmax: drift.Value(Temp_maxLimit!!),
+            value: drift.Value(_latestTemperature!),
+            limitmax: drift.Value(Temp_maxLimit!),
             limitmin: drift.Value(Temp_minLimit!),
             type: drift.Value("Temperature"),
-            serialNo: drift.Value(_serialNo!),
+            serialNo: drift.Value(serialNo),
             recordedAt: drift.Value(DateTime.now()),
           ));
+          prefs.setDouble("TempP", _latestTemperature!);
+          print("Storing Temperature: $_latestTemperature");
 
           List<AlarmTableData> storedData = await _db.getAllAlarms();
           print("Store Alarms: $storedData");
@@ -526,10 +534,32 @@ class _LineCharWidState extends State<LineCharWid> {
           print("Error to store alarms : $e");
         }
       }
-      _addString("Temp is out of range");
+      if (_latestTemperature! > Temp_maxLimit!) {
+        _addString("Temp is Higher than Limit");
+      } else {
+        _addString("Temp is Lower than Limit");
+      }
     } else {
-      countTemp == 0;
-      _removeString("Temp is out of range");
+      _removeString("Temp is Higher than Limit");
+      _removeString("Temp is Lower than Limit");
+    }
+  }
+
+  double _getLPMYAxisMaxValue(String serialNo) {
+    if (serialNo.startsWith('ODP') ||
+        serialNo.startsWith('ODC') ||
+        serialNo.startsWith('ODG')) {
+      return 10;
+    } else if (serialNo.startsWith('OD1')) {
+      return 100;
+    } else if (serialNo.startsWith('OD2')) {
+      return 200;
+    } else if (serialNo.startsWith('OD5')) {
+      return 500;
+    } else if (serialNo.startsWith('OD9')) {
+      return 999;
+    } else {
+      return 10; // Default value if no match
     }
   }
 
@@ -621,8 +651,7 @@ class _LineCharWidState extends State<LineCharWid> {
                                 },
                               ),
                               primaryYAxis: const NumericAxis(
-                                minimum: 70,
-                                interval: 10,
+                                minimum: 0,
                                 maximum: 100,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
@@ -670,9 +699,9 @@ class _LineCharWidState extends State<LineCharWid> {
                                       TextStyle(color: Colors.black));
                                 },
                               ),
-                              primaryYAxis: const NumericAxis(
-                                maximum: 40,
-                                interval: 20,
+
+                              primaryYAxis: NumericAxis(
+                                maximum: _getLPMYAxisMaxValue(serialNo),
                                 minimum: 0,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
@@ -719,9 +748,8 @@ class _LineCharWidState extends State<LineCharWid> {
                                       TextStyle(color: Colors.black));
                                 },
                               ),
-                              primaryYAxis: const NumericAxis(
-                                maximum: 40,
-                                interval: 20,
+                              primaryYAxis: NumericAxis(
+                                maximum: serialNo.startsWith('ODC') ? 20 : 100,
                                 minimum: 0,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
@@ -826,14 +854,17 @@ class _LineCharWidState extends State<LineCharWid> {
                                               MainAxisAlignment.center,
                                           children: [
                                             Text(
-                                              _latestPurity.toStringAsFixed(1),
+                                              (_latestPurity != null
+                                                  ? _latestPurity!
+                                                      .toStringAsFixed(1)
+                                                  : '0.0'),
                                               style: TextStyle(
                                                 color: parameterTextColor[0],
                                                 fontSize: screenWidth / 20,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
-                                            const SizedBox(width: 10),
+                                            const SizedBox(width: 5),
                                             Text(
                                               parameterUnit[0],
                                               style: TextStyle(
@@ -858,7 +889,9 @@ class _LineCharWidState extends State<LineCharWid> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () => _navigateToDetailPage(2),
+                            onTap: () {
+                              if (printvalue != 111) _navigateToDetailPage(2);
+                            },
                             child: Container(
                               height:
                                   MediaQuery.of(context).size.height * 0.313,
@@ -875,14 +908,19 @@ class _LineCharWidState extends State<LineCharWid> {
                                             MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            _latestPressure.toStringAsFixed(1),
+                                            ((printvalue == 111)
+                                                ? "---"
+                                                : _latestPressure != null
+                                                    ? _latestPressure!
+                                                        .toStringAsFixed(1)
+                                                    : "0.0"),
                                             style: TextStyle(
                                               color: parameterTextColor[2],
                                               fontSize: screenWidth / 20,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 5),
                                           Text(
                                             parameterUnit[2],
                                             style: TextStyle(
@@ -909,11 +947,14 @@ class _LineCharWidState extends State<LineCharWid> {
                           ),
                           GestureDetector(
                             onTap: () async {
-                              final db = await AppDbSingleton().database;
-                              await db.deleteAllAlarms();
+                              _showEditDetailsDialog(context);
+                              // final db = await AppDbSingleton().database;
+
+                              // await db.deleteFirstLimitSetting();
+                              // await db.deleteAllAlarms();
                               // await db.customUpdate(
                               //     'DELETE FROM sqlite_sequence WHERE name = "limit_settings_table";');
-                              print("All limit settings have been deleted.");
+                              //  print("All limit settings have been deleted.");
                             },
                             child: Container(
                               height:
@@ -954,7 +995,10 @@ class _LineCharWidState extends State<LineCharWid> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           GestureDetector(
-                            onTap: () => _navigateToDetailPage(1),
+                            onTap: () {
+                              if (!(printvalue == 111 || printvalue == 112))
+                                _navigateToDetailPage(1);
+                            },
                             child: Container(
                               height:
                                   MediaQuery.of(context).size.height * 0.313,
@@ -971,14 +1015,20 @@ class _LineCharWidState extends State<LineCharWid> {
                                             MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            _latestFlowRate.toStringAsFixed(1),
+                                            ((printvalue == 112 ||
+                                                    printvalue == 111)
+                                                ? "---"
+                                                : _latestFlowRate != null
+                                                    ? _latestFlowRate!
+                                                        .toStringAsFixed(1)
+                                                    : "0.0"),
                                             style: TextStyle(
                                               color: parameterTextColor[0],
                                               fontSize: screenWidth / 20,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 5),
                                           Text(
                                             parameterUnit[1],
                                             style: TextStyle(
@@ -1021,15 +1071,17 @@ class _LineCharWidState extends State<LineCharWid> {
                                             MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            _latestTemperature
-                                                .toStringAsFixed(1),
+                                            (_latestTemperature != null
+                                                ? _latestTemperature!
+                                                    .toStringAsFixed(1)
+                                                : "0.0"),
                                             style: TextStyle(
                                               color: parameterTextColor[3],
                                               fontSize: screenWidth / 20,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 5),
                                           Text(
                                             parameterUnit[3],
                                             style: TextStyle(
@@ -1062,6 +1114,7 @@ class _LineCharWidState extends State<LineCharWid> {
                                       builder: (context) => ReportScreen(
                                             data: _cache,
                                             serialNo: _serialNo!,
+                                            appStartTime: appStartTime!,
                                           )));
                             },
                             child: Container(
@@ -1151,14 +1204,16 @@ class _LineCharWidState extends State<LineCharWid> {
   StreamSubscription<double>? _pressureSubscription;
   StreamSubscription<double>? _temperatureSubscription;
 
-  double _latestPurity = 0.0;
-  double _latestFlowRate = 0.0;
-  double _latestPressure = 0.0;
-  double _latestTemperature = 0.0;
+  double? _latestPurity;
+  double? _latestFlowRate;
+  double? _latestPressure;
+  double? _latestTemperature;
 
   String? _serialNo;
   bool _isRunning = false;
   List<Map<String, dynamic>> _cache = [];
+
+  int? printvalue;
 
   Future<void> getData() async {
     print("Max purity: ${Purity_maxLimit}");
@@ -1193,6 +1248,14 @@ class _LineCharWidState extends State<LineCharWid> {
               'timestamp': DateTime.now().toIso8601String(),
             });
           });
+          if (_serialNo!.startsWith("ODG") ||
+              _serialNo!.startsWith("ODP") ||
+              _serialNo!.startsWith("ODA")) {
+            printvalue = 111;
+          } else if (_serialNo!.startsWith("OPP") ||
+              _serialNo!.startsWith("OGP")) {
+            printvalue = 112;
+          }
 
           // Add data to stream controllers
           _purityController.add(purity);

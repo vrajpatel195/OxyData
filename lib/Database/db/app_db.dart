@@ -163,30 +163,34 @@ class AppDb extends _$AppDb {
 
   Future<Map<String, LimitSettingsTableData?>>
       getLatestLimitSettingsForAllTypesBeforeDate(
-          DateTime selectDate, String serialNo) async {
+          DateTime startDate, String serialNo) async {
+    // Define the types you want to fetch
     final types = ['Purity', 'Pressure', 'Temp', 'Flow'];
 
+    // Create a map to store the results
     final Map<String, LimitSettingsTableData?> results = {};
 
-    // Calculate the previous date (one day before selectDate)
-    final previousDate = selectDate.subtract(Duration(days: 1));
+    // Calculate the end of the day just before the startDate
+    final endOfPreviousDay =
+        DateTime(startDate.year, startDate.month, startDate.day)
+            .subtract(Duration(seconds: 1));
 
+    // Loop through each type and get the most recent entry before startDate
     for (String type in types) {
-      // Query to get the latest record for the given type before or on the previousDate
+      // Query to get the latest record for the given type before the end of the previous day
       final query = select(limitSettingsTable)
         ..where((tbl) => tbl.type.equals(type) & tbl.serialNo.equals(serialNo))
-        ..where((tbl) => tbl.recordedAt
-            .isBetweenValues(previousDate, previousDate.add(Duration(days: 1))))
+        ..where((tbl) => tbl.recordedAt.isSmallerOrEqualValue(endOfPreviousDay))
         ..orderBy([
           (tbl) =>
               OrderingTerm(expression: tbl.recordedAt, mode: OrderingMode.desc)
         ])
         ..limit(1);
 
-      // Get the result
+      // Execute the query and get the result
       LimitSettingsTableData? result = await query.getSingleOrNull();
 
-      // Store the result for the current type
+      // Store the result for the current type in the map
       results[type] = result;
     }
 
@@ -202,6 +206,16 @@ class AppDb extends _$AppDb {
 // insert alarm data
   Future<int> insertAlarm(AlarmTableCompanion entity) {
     return into(alarmTable).insert(entity);
+  }
+
+  //get alarms data by current
+  Future<List<AlarmTableData>> getAlarmsByCurrent(
+      DateTime appStartTime, DateTime endOfPeriod) async {
+    return (select(alarmTable)
+          ..where((tbl) =>
+              tbl.recordedAt.isBiggerOrEqualValue(appStartTime) &
+              tbl.recordedAt.isSmallerOrEqualValue(endOfPeriod)))
+        .get();
   }
 
 // get alarm data by date
@@ -308,6 +322,27 @@ class AppDb extends _$AppDb {
     //     .go();
 
     print("Data older than 3 months has been deleted from all tables.");
+  }
+
+  Future<void> deleteFirstLimitSetting() async {
+    // Fetch the first entry based on the ID or any other criteria
+    final firstEntry = await (select(limitSettingsTable)
+          ..orderBy([
+            (tbl) => OrderingTerm(expression: tbl.id, mode: OrderingMode.asc)
+          ])
+          ..limit(1))
+        .getSingleOrNull();
+
+    if (firstEntry != null) {
+      // Delete the fetched entry by its ID
+      await (delete(limitSettingsTable)
+            ..where((tbl) => tbl.id.equals(firstEntry.id)))
+          .go();
+
+      print("First limit setting with ID ${firstEntry.id} has been deleted.");
+    } else {
+      print("No entries found to delete.");
+    }
   }
 
   // Future<void> deleteAllData() async {

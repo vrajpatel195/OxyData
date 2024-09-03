@@ -28,6 +28,7 @@ class DailyReport extends StatefulWidget {
 
 class _DailyReportState extends State<DailyReport> {
   late List<Map<String, dynamic>> _dataPoints;
+  late List<Map<String, dynamic>> _dataPointsmove;
   late List<Map<String, dynamic>> _dataLimits;
   List<Map<String, dynamic>> _datainitialLimit = [];
   List<Map<String, dynamic>> _dataAlarms = [];
@@ -39,11 +40,11 @@ class _DailyReportState extends State<DailyReport> {
   @override
   void initState() {
     super.initState();
-
+    _getDailyData();
     _selectedDate = widget.selectedDate!;
     printLatestLimitSettings(_selectedDate);
     _getDailyLimitData();
-    _getDailyData();
+
     _getDailyAlarmData();
   }
 
@@ -51,8 +52,62 @@ class _DailyReportState extends State<DailyReport> {
     final _db = await AppDbSingleton().database;
     List<OxyDatabaseData> dbData =
         await _db.getDataByDate(_selectedDate, widget.serialNo);
+
+    // Create a map with default 0 values for every minute of the day
+    final Map<DateTime, Map<String, double>> fullDayMap = {};
+    final startOfDay = DateTime(
+        _selectedDate.year, _selectedDate.month, _selectedDate.day, 0, 0);
+    final endOfDay = DateTime(
+        _selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59);
+
+    for (DateTime time = startOfDay;
+        time.isBefore(endOfDay);
+        time = time.add(Duration(minutes: 1))) {
+      fullDayMap[time] = {
+        'purity': -1.0,
+        'flowRate': -1.0,
+        'pressure': -1.0,
+        'temperature': -1.0,
+      };
+    }
+
+    // Normalize the recordedAt time to the nearest minute (ignoring seconds and milliseconds)
+    for (var data in dbData) {
+      DateTime normalizedTime = DateTime(
+          data.recordedAt!.year,
+          data.recordedAt!.month,
+          data.recordedAt!.day,
+          data.recordedAt!.hour,
+          data.recordedAt!.minute);
+
+      if (fullDayMap.containsKey(normalizedTime)) {
+        fullDayMap[normalizedTime] = {
+          'purity': data.purity,
+          'flowRate': data.flow,
+          'pressure': data.pressure,
+          'temperature': data.temp,
+        };
+      }
+    }
+
+    // Convert the map back to a list
+    final List<Map<String, dynamic>> fullDayData =
+        fullDayMap.entries.map((entry) {
+      return {
+        'timestamp': entry.key,
+        'purity': entry.value['purity'],
+        'flowRate': entry.value['flowRate'],
+        'pressure': entry.value['pressure'],
+        'temperature': entry.value['temperature'],
+      };
+    }).toList();
+
     setState(() {
-      _dataPoints = dbData
+      _dataPoints = fullDayData;
+    });
+
+    setState(() {
+      _dataPointsmove = dbData
           .map((data) => {
                 'timestamp': data.recordedAt!,
                 'purity': data.purity,
@@ -168,24 +223,11 @@ class _DailyReportState extends State<DailyReport> {
       ),
       body: RepaintBoundary(
         key: _chartKey,
-        child: _dataPoints.isEmpty
+        child: _dataPointsmove.isEmpty
             ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/NO_data_found.gif',
-                      width: MediaQuery.of(context).size.width * 0.4,
-                      height: MediaQuery.of(context).size.height * 0.65,
-                      fit: BoxFit.cover,
-                    ),
-                    Text(
-                      "No data found!     ($date)",
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                child: Text(
+                  "No data found!     ($date)",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               )
             : Row(
@@ -218,24 +260,6 @@ class _DailyReportState extends State<DailyReport> {
                             width: 2,
                           ),
                         ),
-                        annotations: <CartesianChartAnnotation>[
-                          CartesianChartAnnotation(
-                            widget: Container(
-                              child: Text(
-                                '23:59', // Replace with your end label
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            coordinateUnit: CoordinateUnit.point,
-                            region: AnnotationRegion.chart,
-                            x: endOfDay,
-                            y: -9.2, // Adjust the y position as needed
-                          ),
-                        ],
                         primaryYAxis: const NumericAxis(
                           name: 'primaryYAxis1',
                           minimum: 0,
@@ -399,7 +423,7 @@ class _DailyReportState extends State<DailyReport> {
         final Uint8List chartImage = await _captureChart();
         try {
           await GenerateReport(
-                  data: _dataPoints,
+                  data: _dataPointsmove,
                   dataLimit: _dataLimits,
                   dataAlarms: _dataAlarms,
                   title: "Daily",

@@ -31,6 +31,7 @@ class WeeklyReport extends StatefulWidget {
 
 class _WeeklyReportState extends State<WeeklyReport> {
   late List<Map<String, dynamic>> _dataPoints;
+  late List<Map<String, dynamic>> _dataPointsmove;
   late List<Map<String, dynamic>> _dataLimits;
   late List<Map<String, dynamic>> _datainitialLimit;
   late List<Map<String, dynamic>> _dataAlarms;
@@ -46,7 +47,7 @@ class _WeeklyReportState extends State<WeeklyReport> {
 
     startDate = widget.startDate;
     endDate = widget.endDate;
-    printLatestLimitSettings(startDate!);
+    //  printLatestLimitSettings(startDate!);
     _getWeeklyData();
     _getWeeklyLimitData();
     _getWeeklyAlarmData();
@@ -56,8 +57,57 @@ class _WeeklyReportState extends State<WeeklyReport> {
     final _db = await AppDbSingleton().database;
     List<OxyDatabaseData> dbData =
         await _db.getDataByDateRange(startDate!, endDate!, widget.serialNo);
+
+    // Create a map with default 0 values for each day in the date range
+    final Map<DateTime, Map<String, double>> fullWeekMap = {};
+
+    for (DateTime day = startDate!;
+        day.isBefore(endDate!) || day.isAtSameMomentAs(endDate!);
+        day = day.add(Duration(minutes: 1))) {
+      fullWeekMap[day] = {
+        'purity': -1.0,
+        'flowRate': -1.0,
+        'pressure': -1.0,
+        'temperature': -1.0,
+      };
+    }
+
+    // Populate the map with actual data from the database
+    for (var data in dbData) {
+      DateTime normalizedDay = DateTime(
+        data.recordedAt!.year,
+        data.recordedAt!.month,
+        data.recordedAt!.day,
+      );
+
+      if (fullWeekMap.containsKey(normalizedDay)) {
+        fullWeekMap[normalizedDay] = {
+          'purity': data.purity,
+          'flowRate': data.flow,
+          'pressure': data.pressure,
+          'temperature': data.temp,
+        };
+      }
+    }
+
+    // Convert the map back to a list
+    final List<Map<String, dynamic>> fullWeekData =
+        fullWeekMap.entries.map((entry) {
+      return {
+        'timestamp': entry.key,
+        'purity': entry.value['purity'],
+        'flowRate': entry.value['flowRate'],
+        'pressure': entry.value['pressure'],
+        'temperature': entry.value['temperature'],
+      };
+    }).toList();
+
     setState(() {
-      _dataPoints = dbData
+      _dataPoints = fullWeekData;
+    });
+
+    setState(() {
+      _dataPointsmove = dbData
           .map((data) => {
                 'timestamp': data.recordedAt!,
                 'purity': data.purity,
@@ -87,13 +137,13 @@ class _WeeklyReportState extends State<WeeklyReport> {
 
   void printLatestLimitSettings(DateTime selectDate) async {
     final _db = await AppDbSingleton().database;
-    print("vnbj bjk bkb knfkgjv bn  $selectDate");
+
     Map<String, LimitSettingsTableData?> results =
         await _db.getLatestLimitSettingsForAllTypesBeforeDate(
             selectDate, widget.serialNo);
 
-    _datainitialLimit.clear(); // Clear the list to store fresh data
-    print("vnbj bjk bkb knfkgjv bn ");
+    _datainitialLimit.clear();
+
     results.forEach((type, data) {
       if (data != null) {
         print('Type: $type');
@@ -103,7 +153,6 @@ class _WeeklyReportState extends State<WeeklyReport> {
         print('Recorded At: ${data.recordedAt}');
         print('--------------------------');
 
-        // Store the data in _datainitialLimit
         _datainitialLimit.add({
           'timestamp': data.recordedAt,
           'limit_max': data.limit_max,
@@ -165,7 +214,7 @@ class _WeeklyReportState extends State<WeeklyReport> {
       ),
       body: RepaintBoundary(
         key: _chartKey,
-        child: _dataPoints.isEmpty
+        child: _dataPointsmove.isEmpty
             ? Center(
                 child: Text(
                   "No data found!     (${widget.weekRange})",
@@ -364,7 +413,7 @@ class _WeeklyReportState extends State<WeeklyReport> {
         final Uint8List chartImage = await _captureChart();
         try {
           await GenerateReport(
-              data: _dataPoints,
+              data: _dataPointsmove,
               dataLimit: _dataLimits,
               dataAlarms: _dataAlarms,
               title: "Weekly",

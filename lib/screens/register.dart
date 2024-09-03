@@ -24,7 +24,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   void initState() {
     super.initState();
-    _checkFirstRun();
+    // _checkFirstRun();
   }
 
   Future<void> _checkFirstRun() async {

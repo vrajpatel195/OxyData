@@ -5,10 +5,6 @@ import 'package:oxydata/Demo/Charts/daily_chart.dart';
 import 'package:oxydata/Demo/Charts/monthly_chart.dart';
 import 'package:oxydata/Demo/Charts/weekly_chart.dart';
 import 'package:oxydata/LimitSetting.dart/min_max_data.dart';
-import 'package:oxydata/Report_screens/daily_report.dart';
-import 'package:oxydata/Report_screens/monthly_report.dart';
-import 'package:oxydata/Report_screens/weekly_report.dart';
-import 'package:oxydata/Report_screens/current_report.dart';
 
 class DemoReportScreen extends StatefulWidget {
   DemoReportScreen({super.key, required this.data});

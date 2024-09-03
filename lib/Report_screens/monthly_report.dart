@@ -30,6 +30,7 @@ class MonthlyReport extends StatefulWidget {
 class _MonthlyReportState extends State<MonthlyReport> {
   DateTime? selectedMonthDate;
   late List<Map<String, dynamic>> _dataPoints;
+  late List<Map<String, dynamic>> _dataPointsmove;
   late List<Map<String, dynamic>> _dataLimits;
   late List<Map<String, dynamic>> _datainitialLimit;
   late List<Map<String, dynamic>> _dataAlarms;
@@ -55,8 +56,63 @@ class _MonthlyReportState extends State<MonthlyReport> {
     final _db = await AppDbSingleton().database;
     List<OxyDatabaseData> dbData =
         await _db.getDataByMonth(selectedMonthDate!, widget.serialNo);
+
+    // Get the first and last day of the selected month
+    final startOfMonth =
+        DateTime(selectedMonthDate!.year, selectedMonthDate!.month, 1);
+    final endOfMonth =
+        DateTime(selectedMonthDate!.year, selectedMonthDate!.month + 1, 0);
+
+    // Create a map with default 0 values for every day of the month
+    final Map<DateTime, Map<String, double>> fullMonthMap = {};
+
+    for (DateTime day = startOfMonth;
+        day.isBefore(endOfMonth) || day.isAtSameMomentAs(endOfMonth);
+        day = day.add(Duration(minutes: 1))) {
+      fullMonthMap[day] = {
+        'purity': -1.0,
+        'flowRate': -1.0,
+        'pressure': -1.0,
+        'temperature': -1.0,
+      };
+    }
+
+    // Populate the map with actual data from the database
+    for (var data in dbData) {
+      DateTime normalizedDay = DateTime(
+        data.recordedAt!.year,
+        data.recordedAt!.month,
+        data.recordedAt!.day,
+      );
+
+      if (fullMonthMap.containsKey(normalizedDay)) {
+        fullMonthMap[normalizedDay] = {
+          'purity': data.purity,
+          'flowRate': data.flow,
+          'pressure': data.pressure,
+          'temperature': data.temp,
+        };
+      }
+    }
+
+    // Convert the map back to a list
+    final List<Map<String, dynamic>> fullMonthData =
+        fullMonthMap.entries.map((entry) {
+      return {
+        'timestamp': entry.key,
+        'purity': entry.value['purity'],
+        'flowRate': entry.value['flowRate'],
+        'pressure': entry.value['pressure'],
+        'temperature': entry.value['temperature'],
+      };
+    }).toList();
+
     setState(() {
-      _dataPoints = dbData
+      _dataPoints = fullMonthData;
+    });
+
+    setState(() {
+      _dataPointsmove = dbData
           .map((data) => {
                 'timestamp': data.recordedAt!,
                 'purity': data.purity,
@@ -185,7 +241,7 @@ class _MonthlyReportState extends State<MonthlyReport> {
       ),
       body: RepaintBoundary(
         key: _chartKey,
-        child: _dataPoints.isEmpty
+        child: _dataPointsmove.isEmpty
             ? Center(
                 child: Text(
                   "No data found!     (${widget.selectedMonth})",
@@ -390,7 +446,7 @@ class _MonthlyReportState extends State<MonthlyReport> {
         final Uint8List chartImage = await _captureChart();
         try {
           await GenerateReport(
-                  data: _dataPoints,
+                  data: _dataPointsmove,
                   dataLimit: _dataLimits,
                   dataAlarms: _dataAlarms,
                   title: "Monthly",

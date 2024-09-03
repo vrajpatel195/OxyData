@@ -5,14 +5,17 @@ import 'package:oxydata/Report_screens/daily_report.dart';
 import 'package:oxydata/Report_screens/monthly_report.dart';
 import 'package:oxydata/Report_screens/weekly_report.dart';
 import 'package:oxydata/Report_screens/current_report.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../LimitSetting.dart/api_service.dart';
-
+// ignore: must_be_immutable
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key, required this.data, required this.serialNo});
+  ReportScreen(
+      {super.key,
+      required this.data,
+      required this.serialNo,
+      required this.appStartTime});
   final List<Map<String, dynamic>> data;
   final String serialNo;
+  DateTime appStartTime;
   @override
   State<ReportScreen> createState() => _ReportScreenState();
 }
@@ -410,9 +413,9 @@ class _ReportScreenState extends State<ReportScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => GraphReport(
-              data: widget.data,
-              remark: _remarkController.text,
-            ),
+                data: widget.data,
+                remark: _remarkController.text,
+                appStartTime: widget.appStartTime),
           ),
         ).then((_) {
           // Refresh the screen when coming back from GraphReport

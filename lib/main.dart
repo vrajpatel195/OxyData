@@ -3,9 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:keep_screen_on/keep_screen_on.dart';
 import 'package:oxydata/screens/splash_screen.dart';
-
-import 'Database/db/app_db.dart';
 
 void _enablePlatformOverrideForDesktop() {
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
@@ -15,6 +14,7 @@ void _enablePlatformOverrideForDesktop() {
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  KeepScreenOn.turnOn();
   SystemChrome.setPreferredOrientations(
       [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
   _enablePlatformOverrideForDesktop();

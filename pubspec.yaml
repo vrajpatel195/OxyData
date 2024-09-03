@@ -51,6 +51,8 @@ dependencies:
   drift_flutter: ^0.1.0
   intl: ^0.19.0
   tuple: ^2.0.2
+  keep_screen_on: ^3.0.0
+
 
 
  

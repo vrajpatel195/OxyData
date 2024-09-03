@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:oxydata/screens/main_page.dart';
 import 'package:oxydata/screens/register.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Database/db/app_db.dart';
 // Import your home screen or main screen
@@ -35,12 +37,25 @@ class _SplashScreenState extends State<SplashScreen>
     // Delete data older than 3 months
     await db.deleteDataOlderThanThreeMonths();
     await Future.delayed(Duration(seconds: 5), () {});
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-          builder: (context) =>
-              RegistrationScreen()), // Replace HomeScreen with your main screen
-    );
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isFirstRun = prefs.getBool('isFirstRun') ?? true;
+    print("first runnnnn: $isFirstRun");
+
+    if (!isFirstRun) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Dashboard(),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (context) =>
+                RegistrationScreen()), // Replace HomeScreen with your main screen
+      );
+    }
   }
 
   @override
