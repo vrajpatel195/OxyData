@@ -215,6 +215,7 @@ class _DashboardState extends State<Dashboard>
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: Row(
@@ -256,7 +257,7 @@ class _DashboardState extends State<Dashboard>
             ],
           ),
           toolbarHeight: 40,
-          backgroundColor: const Color.fromRGBO(255, 255, 255, 0.612),
+          backgroundColor: Color.fromARGB(141, 241, 241, 241),
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())

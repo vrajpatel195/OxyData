@@ -1,245 +1,300 @@
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:syncfusion_flutter_charts/charts.dart';
+// void generatePDF_Daily() async {
+//     if (!mounted) return;
+//     SharedPreferences prefs = await SharedPreferences.getInstance();
+//     final logoBytes = await rootBundle.load('assets/Wavevison-Logo.png');
+//     final logoImage = logoBytes.buffer.asUint8List();
+//     String hospitalCompany = prefs.getString('hospitalCompany') ?? '';
+//     final pdf = pw.Document();
+//     String remark = _remarkController.text;
+//     final titleStyle = pw.TextStyle(
+//       fontSize: 16,
+//       fontWeight: pw.FontWeight.bold,
+//     );
 
-class ChartExample extends StatefulWidget {
-  @override
-  _ChartExampleState createState() => _ChartExampleState();
-}
+//     final regularStyle = pw.TextStyle(
+//       fontSize: 10,
+//     );
 
-class _ChartExampleState extends State<ChartExample> {
-  final StreamController<double> _purityController = StreamController<double>();
-  final StreamController<double> _flowRateController =
-      StreamController<double>();
-  final StreamController<double> _pressureController =
-      StreamController<double>();
-  final StreamController<double> _temperatureController =
-      StreamController<double>();
+//     final footerStyle = pw.TextStyle(
+//       fontSize: 8,
+//     );
 
-  ChartSeriesController? _purityChartController;
-  ChartSeriesController? _flowRateChartController;
-  ChartSeriesController? _pressureChartController;
-  ChartSeriesController? _temperatureChartController;
+//     final selectedGasesHeader = widget.selectedValues.join(', ');
 
-  List<_ChartData> _purityData = [];
-  List<_ChartData> _flowRateData = [];
-  List<_ChartData> _pressureData = [];
-  List<_ChartData> _temperatureData = [];
+//     String dynamicHeading;
+//     if (selectedOption == 'Daily' && widget.seletedDate != null) {
+//       dynamicHeading =
+//           'Daily Report for ${DateFormat.yMMMd().format(widget.seletedDate!)}';
+//     }
 
-  StreamSubscription<double>? _puritySubscription;
-  StreamSubscription<double>? _flowRateSubscription;
-  StreamSubscription<double>? _pressureSubscription;
-  StreamSubscription<double>? _temperatureSubscription;
+//     // Create a footer with page number and logo
+//     pw.Widget footer(int currentPage, int totalPages) {
+//       return pw.Column(
+//         children: [
+//           pw.Divider(),
+//           pw.Row(
+//             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+//             children: [
+//               pw.Text('Page $currentPage of $totalPages', style: footerStyle),
+//               pw.Container(
+//                 width: 50,
+//                 height: 50,
+//                 child: pw.Image(pw.MemoryImage(logoImage)),
+//               ),
+//               pw.Text(
+//                 'Report generated from PressData® by wavevisions.in',
+//                 style: footerStyle,
+//               ),
+//             ],
+//           ),
+//         ],
+//       );
+//     }
 
-  double _latestPurity = 0.0;
-  double _latestFlowRate = 0.0;
-  double _latestPressure = 0.0;
-  double _latestTemperature = 0.0;
+//     // Header content
+//     pw.Widget headerContent() {
+//       return pw.Container(
+//         padding: pw.EdgeInsets.all(8),
+//         child: pw.Column(
+//           crossAxisAlignment: pw.CrossAxisAlignment.start,
+//           children: [
+//             pw.Row(
+//               mainAxisAlignment: pw.MainAxisAlignment.center,
+//               crossAxisAlignment: pw.CrossAxisAlignment.center,
+//               children: [
+//               pw.RichText(
+//   text: pw.TextSpan(
+//     text: 'Press',  // Text before "Data"
+//     style: titleStyle,  // Your predefined title style
+//     children: [
+//       pw.TextSpan(
+//         text: 'Data',  // Main text with the registered symbol
+//         style: titleStyle,
+//         children: [
+//           pw.WidgetSpan(
+//             child: pw.Transform(
+//               transform: Matrix4.translationValues(2, 4, 0),  // Correctly position the symbol above "Data"
+//               child: pw.Text(
+//                 '®',
+//                 style: titleStyle.copyWith(fontSize: 10),  // Adjust font size for the trademark symbol
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//       pw.TextSpan(
+//         text: ' Report - $selectedGasesHeader',  // Continuation of the text after "Data"
+//         style: titleStyle,
+//       ),
+//     ],
+//   ),
+// ),
+//               ],
+//             ),
+//             pw.SizedBox(height: 4),
+//             pw.Divider(),
+//             pw.SizedBox(height: 8),
+//             pw.Row(
+//               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+//               children: [
+//                 pw.Text('Hospital/Company: $hospitalCompany',
+//                     style: regularStyle),
+//                 pw.Text('Location: ${widget.locationname} ',
+//                     style: regularStyle),
+//               ],
+//             ),
+//             pw.SizedBox(height: 8),
+//             pw.Row(
+//               mainAxisAlignment: pw.MainAxisAlignment.start,
+//               children: [
+//                 pw.Text('PressData unit Sr no: ${widget.serial}',
+//                     style: regularStyle),
+//               ],
+//             ),
+//             pw.SizedBox(height: 8),
+//             pw.Divider(),
+//             pw.Row(
+//               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+//               children: [
+//                 pw.Text(
+//                     'Date: ${DateFormat('dd-MM-yyyy').format(widget.seletedDate!)}',
+//                     style: regularStyle),
+//                 pw.Text(
+//                     'Report generation Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}',
+//                     style: regularStyle),
+//               ],
+//             ),
+//             pw.SizedBox(height: 8),
+//             pw.Divider(),
+//             pw.SizedBox(height: 8),
+//           ],
+//         ),
+//       );
+//     }
 
-  @override
-  void initState() {
-    super.initState();
-    fetchDataPeriodically();
-    _puritySubscription = _purityController.stream.listen((data) {
-      setState(() {
-        final now = DateTime.now();
-        _purityData.add(_ChartData(now, data));
-        if (_purityData.length > 20) _purityData.removeAt(0);
-        _latestPurity = data;
-      });
-      _updateDataSource();
-    });
-    _flowRateSubscription = _flowRateController.stream.listen((data) {
-      setState(() {
-        final now = DateTime.now();
-        _flowRateData.add(_ChartData(now, data));
-        if (_flowRateData.length > 20) _flowRateData.removeAt(0);
-        _latestFlowRate = data;
-      });
-      _updateDataSource();
-    });
-    _pressureSubscription = _pressureController.stream.listen((data) {
-      setState(() {
-        final now = DateTime.now();
-        _pressureData.add(_ChartData(now, data));
-        if (_pressureData.length > 20) _pressureData.removeAt(0);
-        _latestPressure = data;
-      });
-      _updateDataSource();
-    });
-    _temperatureSubscription = _temperatureController.stream.listen((data) {
-      setState(() {
-        final now = DateTime.now();
-        _temperatureData.add(_ChartData(now, data));
-        if (_temperatureData.length > 20) _temperatureData.removeAt(0);
-        _latestTemperature = data;
-      });
-      _updateDataSource();
-    });
-  }
+//     pdf.addPage(
+//       pw.MultiPage(
+//         pageFormat: PdfPageFormat.a4,
+//         margin: pw.EdgeInsets.all(5),
+//         footer: (pw.Context context) =>
+//             footer(context.pageNumber, context.pagesCount),
+//         header: (pw.Context context) => headerContent(), // Set the header
+//         build: (pw.Context context) {
+//           List<pw.Widget> content = [];
 
-  @override
-  void dispose() {
-    _purityController.close();
-    _flowRateController.close();
-    _pressureController.close();
-    _temperatureController.close();
-    _puritySubscription?.cancel();
-    _flowRateSubscription?.cancel();
-    _pressureSubscription?.cancel();
-    _temperatureSubscription?.cancel();
-    super.dispose();
-  }
+//           content.add(
+//             pw.Center(
+//               child: pw.Text(
+//                 'Graph - Time (HH 00 to 24) Vs $selectedGasesHeader Gas Values',
+//               ),
+//             ),
+//           );
 
-  void fetchDataPeriodically() {
-    Timer.periodic(Duration(seconds: 1), (timer) async {
-      await getData();
-    });
-  }
+//           content.add(
+//             pw.Container(
+//               height: 200,
+//               child: pw.Image(pw.MemoryImage(pngBytes)),
+//             ),
+//           );
 
-  Future<void> getData() async {
-    var url = Uri.parse('http://192.168.4.1/getdata');
+//           content.add(pw.SizedBox(height: 8));
 
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
+//           content.add(
+//             pw.Table.fromTextArray(
+//               headers: [
+//                 'Parameters',
+//                 'Max',
+//                 'Min',
+//                 'Average',
+//                 'Max Time',
+//                 'Min Time'
+//               ],
+//               data: List.generate(widget.selectedValues.length, (index) {
+//                 return [
+//                   widget.selectedValues[index],
+//                   maxPressure[index].toString(),
+//                   minPressure[index].toString(),
+//                   avgPressure[index].toString(),
+//                   maxPressureTime[index].toIso8601String(),
+//                   minPressureTime[index].toIso8601String(),
+//                 ];
+//               }),
+//               cellStyle: regularStyle,
+//               headerStyle: titleStyle,
+//               border: pw.TableBorder.all(color: PdfColors.black),
+//               headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
+//               cellAlignment: pw.Alignment.centerLeft,
+//             ),
+//           );
 
-        if (data.isNotEmpty) {
-          Map<String, dynamic> jsonData = data[0];
+//           content.add(pw.SizedBox(height: 22));
 
-          _purityController.add(double.tryParse(jsonData['Purity']) ?? 0.0);
-          _flowRateController
-              .add(double.tryParse(jsonData['Flow_Rate']) ?? 0.0);
-          _pressureController.add(double.tryParse(jsonData['Pressure']) ?? 0.0);
-          _temperatureController
-              .add(double.tryParse(jsonData['Temperature']) ?? 0.0);
-        }
-      } else {
-        throw Exception('Failed to load data');
-      }
-    } catch (e) {
-      print('Error fetching data: $e');
-    }
-  }
+//           content.add(
+//             pw.Text('Alarm conditions:', style: regularStyle),
+//           );
 
-  void _updateDataSource() {
-    _purityChartController?.updateDataSource(
-      addedDataIndex: _purityData.length - 1,
-      removedDataIndex: _purityData.length > 1 ? 0 : -1,
-    );
-    _flowRateChartController?.updateDataSource(
-      addedDataIndex: _flowRateData.length - 1,
-      removedDataIndex: _flowRateData.length > 1 ? 0 : -1,
-    );
-    _pressureChartController?.updateDataSource(
-      addedDataIndex: _pressureData.length - 1,
-      removedDataIndex: _pressureData.length > 1 ? 0 : -1,
-    );
-    _temperatureChartController?.updateDataSource(
-      addedDataIndex: _temperatureData.length - 1,
-      removedDataIndex: _temperatureData.length > 1 ? 0 : -1,
-    );
-  }
+//           if (logs.isEmpty) {
+//             content.add(
+//               pw.Row(children: [
+//                 pw.SizedBox(width: 150),
+//                 pw.Text('No alarm detected today.', style: regularStyle),
+//               ]),
+//             );
+//           } else {
+//             // Calculate row height and available space
+//             final rowHeight = 14; // Adjust based on your row height
+//             final pageHeight =
+//                 PdfPageFormat.a4.height - 100; // Margin and footer space
+//             final maxRowsPerPage = (pageHeight / rowHeight).floor();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Stream Based Charts'),
-      ),
-      body: Row(
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SfCartesianChart(
-                      primaryXAxis: DateTimeAxis(),
-                      primaryYAxis: NumericAxis(),
-                      series: <LineSeries<_ChartData, DateTime>>[
-                        LineSeries<_ChartData, DateTime>(
-                          onRendererCreated:
-                              (ChartSeriesController controller) {
-                            _purityChartController = controller;
-                          },
-                          dataSource: _purityData,
-                          xValueMapper: (data, _) => data.time,
-                          yValueMapper: (data, _) => data.value,
-                          name: 'Purity',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SfCartesianChart(
-                      primaryXAxis: DateTimeAxis(),
-                      primaryYAxis: NumericAxis(),
-                      series: <LineSeries<_ChartData, DateTime>>[
-                        LineSeries<_ChartData, DateTime>(
-                          onRendererCreated:
-                              (ChartSeriesController controller) {
-                            _flowRateChartController = controller;
-                          },
-                          dataSource: _flowRateData,
-                          xValueMapper: (data, _) => data.time,
-                          yValueMapper: (data, _) => data.value,
-                          name: 'Flow Rate',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            children: [
-              _buildCard('Purity', _latestPurity.toStringAsFixed(0)),
-              _buildCard('Flow Rate', _latestFlowRate.toStringAsFixed(0)),
-              _buildCard('Pressure', _latestPressure.toStringAsFixed(2)),
-              _buildCard('Temperature', _latestTemperature.toStringAsFixed(0)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+//             int start = 0;
+//             while (start < logs.length) {
+//               int end = (start + maxRowsPerPage > logs.length)
+//                   ? logs.length
+//                   : start + maxRowsPerPage;
 
-  Widget _buildCard(String title, String value) {
-    return Card(
-      margin: EdgeInsets.all(8.0),
-      child: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8.0),
-            Text(
-              value,
-              style: TextStyle(fontSize: 16.0),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//               content.add(
+//                 pw.Table.fromTextArray(
+//                   headers: [
+//                     'Parameters',
+//                     'Max Value',
+//                     'Min Value',
+//                     'Log',
+//                     'Time',
+//                   ],
+//                   data: List.generate(end - start, (index) {
+//                     int i = start + index;
+//                     return [
+//                       parameters_log[i],
+//                       maxvalue[i].toString(),
+//                       minvalue[i].toString(),
+//                       logs[i].toString(),
+//                       Time[i].toIso8601String(),
+//                     ];
+//                   }),
+//                   cellStyle: regularStyle,
+//                   headerStyle: titleStyle,
+//                   border: pw.TableBorder.all(color: PdfColors.black),
+//                   headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
+//                   cellAlignment: pw.Alignment.centerLeft,
+//                 ),
+//               );
 
-class _ChartData {
-  final DateTime time;
-  final double value;
+//               start = end;
 
-  _ChartData(this.time, this.value);
-}
+//               // Add a new page if more data is left
+//               if (start < logs.length) {
+//                 pdf.addPage(
+//                   pw.Page(
+//                     pageFormat: PdfPageFormat.a4,
+//                     build: (pw.Context context) => pw.Center(
+//                       child: pw.Text(
+//                           'Page ${context.pageNumber} of ${context.pagesCount}'),
+//                     ),
+//                   ),
+//                 );
+//               }
+//             }
+//           }
+
+//           content.add(pw.SizedBox(height: 22));
+//           content.add(pw.Text('Remarks:', style: regularStyle));
+//           content.add(pw.SizedBox(height: 8));
+//           content.add(pw.Text('$remark', style: regularStyle));
+//           content.add(pw.SizedBox(height: 8));
+//           content.add(
+//             pw.Row(
+//               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+//               children: [
+//                 pw.SizedBox(width: 300),
+//                 pw.Text('Sign:', style: regularStyle),
+//                 pw.SizedBox(width: 150), // Adjust the width as necessary
+//               ],
+//             ),
+//           );
+
+//           return content;
+//         },
+//       ),
+//     );
+
+//     final documentsDirstore =
+//         Directory('/storage/emulated/0/Download/PressData/Daily');
+//     final documentsDir = await getExternalStorageDirectory();
+//     if (!documentsDirstore.existsSync()) {
+//       documentsDirstore.createSync(recursive: true);
+//     }
+//     String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+//     final pdfpath = '/ReportDaily${widget.serial}_$timestamp.pdf';
+//     final filePath = '${documentsDir?.path}${pdfpath}';
+//     final filepathStore = '${documentsDirstore.path}${pdfpath}';
+//     final file = File(filePath);
+//     final filestore = File(filepathStore);
+//     final pdfBytes = await pdf.save();
+//     await file.writeAsBytes(pdfBytes);
+//     await filestore.writeAsBytes(pdfBytes);
+
+//     OpenFile.open(filePath);
+
+//     _clearSelectedData();
+//  }

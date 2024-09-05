@@ -546,17 +546,13 @@ class _LineCharWidState extends State<LineCharWid> {
   }
 
   double _getLPMYAxisMaxValue(String serialNo) {
-    if (serialNo.startsWith('ODP') ||
-        serialNo.startsWith('ODC') ||
-        serialNo.startsWith('ODG')) {
-      return 10;
-    } else if (serialNo.startsWith('OD1')) {
+    if (serialNo.startsWith('OP1')) {
       return 100;
-    } else if (serialNo.startsWith('OD2')) {
+    } else if (serialNo.startsWith('OP2')) {
       return 200;
-    } else if (serialNo.startsWith('OD5')) {
+    } else if (serialNo.startsWith('OP5')) {
       return 500;
-    } else if (serialNo.startsWith('OD9')) {
+    } else if (serialNo.startsWith('OP9')) {
       return 999;
     } else {
       return 10; // Default value if no match
@@ -615,6 +611,7 @@ class _LineCharWidState extends State<LineCharWid> {
     ];
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           Expanded(

@@ -87,8 +87,7 @@ class _PressureState extends State<PressureDemo> {
             ],
           ),
         ),
-        backgroundColor: Color.fromRGBO(255, 255, 255, 1),
-        bottom: PreferredSize(
+ backgroundColor: Color.fromARGB(141, 241, 241, 241),        bottom: PreferredSize(
           preferredSize: Size.fromHeight(4.0), // Adjust the height as needed
           child: Container(
             color: Colors.black, // Change this to the desired border color

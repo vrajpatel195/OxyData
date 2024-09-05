@@ -186,6 +186,7 @@ class _FlowSettingState extends State<FlowSetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           onPressed: () {
@@ -194,20 +195,21 @@ class _FlowSettingState extends State<FlowSetting> {
           icon: Icon(Icons.arrow_back_outlined),
         ),
         title: Center(
-          child: Column(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                "Flow Limit Settings",
+                "Flow Limit Settings ",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(
-                "LPM",
+                " (LPM)",
                 style: TextStyle(fontSize: 15),
               ),
             ],
           ),
         ),
-        backgroundColor: Color.fromRGBO(255, 255, 255, 1),
+        backgroundColor: Color.fromARGB(141, 241, 241, 241),
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(4.0),
           child: Container(
@@ -215,6 +217,7 @@ class _FlowSettingState extends State<FlowSetting> {
             height: 4.0,
           ),
         ),
+        toolbarHeight: 40,
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -275,7 +278,6 @@ class _FlowSettingState extends State<FlowSetting> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: decrement,
           onTapDown: (_) {
             _startIncrementTimer(decrement);
           },
@@ -311,7 +313,6 @@ class _FlowSettingState extends State<FlowSetting> {
           ),
         ),
         GestureDetector(
-          onTap: increment,
           onTapDown: (_) {
             _startDecrementTimer(increment);
           },

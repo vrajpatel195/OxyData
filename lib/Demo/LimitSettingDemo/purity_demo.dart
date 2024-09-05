@@ -85,8 +85,7 @@ class _PurityState extends State<PurityDemo> {
             ],
           ),
         ),
-        backgroundColor: Color.fromRGBO(255, 255, 255, 1),
-        bottom: PreferredSize(
+ backgroundColor: Color.fromARGB(141, 241, 241, 241),        bottom: PreferredSize(
           preferredSize: Size.fromHeight(4.0),
           child: Container(
             color: Colors.black,

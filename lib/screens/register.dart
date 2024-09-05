@@ -198,7 +198,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     String? Function(String?)? validator,
     required Icon icon,
   }) {
-    return Container(
+    return SizedBox(
       height: 40,
       child: TextFormField(
         controller: controller,
@@ -209,21 +209,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 horizontal: 10.0), // Adjust padding as needed
             child: icon,
           ),
-          prefixIconConstraints: BoxConstraints(
+          prefixIconConstraints: const BoxConstraints(
             minWidth: 0, // Adjust this value if needed
             minHeight: 0, // Adjust this value if needed
           ),
-          contentPadding:
-              EdgeInsets.symmetric(vertical: 10), // Adjust vertical padding
+          contentPadding: const EdgeInsets.symmetric(
+              vertical: 10), // Adjust vertical padding
           labelText: label,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
-          enabledBorder: OutlineInputBorder(
+          enabledBorder: const OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(15.0)),
             borderSide: BorderSide(color: Colors.grey, width: 0.0),
           ),
-          border: OutlineInputBorder(),
+          border: const OutlineInputBorder(),
           suffixIcon: validator != null
-              ? Padding(
+              ? const Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Text(
                     '*',

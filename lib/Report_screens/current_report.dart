@@ -683,21 +683,22 @@ class GraphReportState extends State<GraphReport> {
                           child: pw.Text(
                             "No alarms",
                           ),
-                        )
+                        ),
+                        pw.Divider(),
+                        pw.SizedBox(height: 5),
+                        pw.Text("Remark:", style: regularStyle),
+                        pw.Padding(
+                          padding: pw.EdgeInsets.only(left: 20),
+                          child: pw.Row(
+                            mainAxisAlignment:
+                                pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              pw.Text(widget.remark, style: regularStyle),
+                              pw.Text("Sign:                         "),
+                            ],
+                          ),
+                        ),
                       ]),
-                pw.Divider(),
-                pw.SizedBox(height: 5),
-                pw.Text("Remark:", style: regularStyle),
-                pw.Padding(
-                  padding: pw.EdgeInsets.only(left: 20),
-                  child: pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(widget.remark, style: regularStyle),
-                      pw.Text("Sign:                         "),
-                    ],
-                  ),
-                ),
               ],
             ),
           ];

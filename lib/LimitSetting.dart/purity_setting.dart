@@ -193,6 +193,7 @@ class _PuritySettingState extends State<PuritySetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           leading: IconButton(
             onPressed: () {
@@ -201,20 +202,21 @@ class _PuritySettingState extends State<PuritySetting> {
             icon: Icon(Icons.arrow_back_outlined),
           ),
           title: Center(
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Purity Limit Settings",
+                  "Purity Limit Settings ",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  "%",
-                  style: TextStyle(fontSize: 15),
+                  " (%)",
+                  style: TextStyle(fontSize: 20),
                 ),
               ],
             ),
           ),
-          backgroundColor: Color.fromRGBO(255, 255, 255, 1),
+          backgroundColor: Color.fromARGB(141, 241, 241, 241),
           bottom: PreferredSize(
             preferredSize: Size.fromHeight(4.0),
             child: Container(
@@ -222,6 +224,7 @@ class _PuritySettingState extends State<PuritySetting> {
               height: 4.0,
             ),
           ),
+          toolbarHeight: 40,
         ),
         body: Padding(
             padding: const EdgeInsets.all(8.0),
@@ -282,7 +285,6 @@ class _PuritySettingState extends State<PuritySetting> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: decrement,
           onTapDown: (_) {
             _startIncrementTimer(decrement);
           },
@@ -318,7 +320,6 @@ class _PuritySettingState extends State<PuritySetting> {
           ),
         ),
         GestureDetector(
-          onTap: increment,
           onTapDown: (_) {
             _startDecrementTimer(increment);
           },

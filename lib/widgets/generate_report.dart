@@ -387,13 +387,7 @@ class GenerateReport {
   //       await file.writeAsBytes(pdfBytes);
 
   //       // Open the PDF file using OpenFile
-  //       final result = await OpenFile.open(filePath);
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('PDF saved to $filePath')),
-  //       );
-  //       print("File Path: $filePath");
-  //       print("Open File Result: ${result.message}");
-  //     } catch (e) {
+  //       final result = await OpenFile.open(filePath)
   //       print("Failed to save or open file: $e");
   //     }
   //   }
@@ -429,19 +423,19 @@ class GenerateReport {
     final headers = ['DateTime', 'Limit Max', 'Limit Min', 'Type'];
     final dataRows1 = datainitialLimit.map((data) {
       return [
-        data['timestamp'].toString(), // DateTime
-        data['limit_max'].toString(), // Limit Max
-        data['limit_min'].toString(), // Limit Min
-        data['type'].toString(), // Type
+        data['timestamp'].toString(),
+        data['limit_max'].toString(),
+        data['limit_min'].toString(),
+        data['type'].toString(),
       ];
     }).toList();
 
     final dataRows2 = dataLimit.map((data) {
       return [
-        data['timestamp'].toString(), // DateTime
-        data['limit_max'].toString(), // Limit Max
-        data['limit_min'].toString(), // Limit Min
-        data['type'].toString(), // Type
+        data['timestamp'].toString(),
+        data['limit_max'].toString(),
+        data['limit_min'].toString(),
+        data['type'].toString(),
       ];
     }).toList();
 
@@ -456,438 +450,204 @@ class GenerateReport {
     ];
     final dataAlarmsRow = dataAlarms.map((data) {
       return [
-        data['timestamp'].toString(), // DateTime
-        data['limitmax'].toString(), // Limit Max
-        data['limitmin'].toString(), // Limit Min
+        data['timestamp'].toString(),
+        data['limitmax'].toString(),
+        data['limitmin'].toString(),
         data['Alarms'].toString(),
-        data['type'].toString(), // Type
+        data['type'].toString(),
       ];
     }).toList();
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.only(top: 20, right: 20, left: 20, bottom: 10),
-        build: (pw.Context context) {
-          List<pw.Widget> content = [
-            pw.Container(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                children: [
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
-                    children: [
-                      pw.Text('OxyData ${title} Report', style: titleStyle),
-                    ],
-                  ),
-                  pw.Divider(),
-                  pw.SizedBox(height: 8),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text("Hospital name: $hospitalName"),
-                      pw.Text(
-                          "Location: ${prefs.getString('locationName') ?? 'null'}"),
-                    ],
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(
-                          "OxyData unit Sr no : ${prefs.getString('serialNo') ?? 'null'}"),
-                      if (title == "Daily")
-                        pw.Text(
-                            "Date: ${DateFormat('dd-MM-yyyy').format(_selectedDate)}"),
-                    ],
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(
-                          "Report Generation Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}"),
-                      if (title == "Weekly" || title == "Monthly")
-                        pw.Text(
-                            "Start Date: ${DateFormat('dd-MM-yyyy').format(_weekStartDate)}"),
-                    ],
-                  ),
-                  if (title == "Weekly" || title == "Monthly")
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.end,
-                      children: [
-                        pw.Text(
-                            "End Date: ${DateFormat('dd-MM-yyyy').format(_weekEndDate)}"),
-                      ],
-                    ),
-                  pw.Divider(),
-                  pw.SizedBox(height: 5),
-                  if (title == "Daily")
-                    pw.Text(
-                        "Graph - Time (HH 00 to 24) Vs Oxygen Parameter Values"),
-                  if (title == "Weekly")
-                    pw.Text(
-                        "Graph - Day (Sunday to Saturday) Vs Oxygen Parameter Values"),
-                  if (title == "Monthly")
-                    pw.Text(
-                        "Graph - Date (01-MM to 30-MM) Vs Oxygen Parameter Values"),
-                  pw.SizedBox(height: 5),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
-                    children: [
-                      pw.Image(pw.MemoryImage(chartImage), height: 200),
-                    ],
-                  ),
-                  pw.SizedBox(height: 10),
-                  pw.Padding(
-                    padding: pw.EdgeInsets.symmetric(horizontal: 20),
-                    child: pw.Table.fromTextArray(
-                      headers: [
-                        'Current period overview',
-                        'Minimum',
-                        'Maximum',
-                        'Average'
-                      ],
-                      data: [
-                        [
-                          'Oxygen Purity  (%)',
-                          '$_minPurity',
-                          '$_maxPurity',
-                          '${_avgPurity.toStringAsFixed(2)}'
-                        ],
-                        [
-                          'Gas Pressure   (PSI)',
-                          '$_minPressure',
-                          '$_maxPressure',
-                          '${_avgPressure.toStringAsFixed(2)}'
-                        ],
-                        [
-                          'Gas Flow   (LPM)',
-                          '$_minFlow',
-                          '$_maxFlow',
-                          '${_avgFlow.toStringAsFixed(2)}'
-                        ],
-                        [
-                          'Gas Temperature  (°C)',
-                          '$_minTemperature',
-                          '$_maxTemperature',
-                          '${_avgTemperature.toStringAsFixed(2)}'
-                        ],
-                      ],
-                      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      cellAlignment: pw.Alignment.centerLeft,
-                      tableWidth: pw.TableWidth.max,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 15),
-            // Add the first 8 rows of the Limit Conditions Table
-            if (combinedDataRows.length > 8)
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    "Limit Conditions:",
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Table.fromTextArray(
-                    headers: headers,
-                    data: combinedDataRows.sublist(0, 8),
-                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    cellAlignment: pw.Alignment.centerLeft,
-                    tableWidth: pw.TableWidth.max,
-                  ),
-                  pw.SizedBox(height: 10),
-                ],
-              ),
-            // Only show the table if the rows are 8 or less
-            if (combinedDataRows.length <= 8)
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    "Limit Conditions:",
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Table.fromTextArray(
-                    headers: headers,
-                    data: combinedDataRows,
-                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    cellAlignment: pw.Alignment.centerLeft,
-                    tableWidth: pw.TableWidth.max,
-                  ),
-                  pw.SizedBox(height: 10),
-                  if (dataAlarms.isEmpty)
-                    pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            "Alarm Condition:",
-                            style: pw.TextStyle(
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                          ),
-                          pw.SizedBox(height: 3),
-                          pw.Container(
-                            alignment: pw.Alignment.center,
-                            padding: pw.EdgeInsets.only(top: 5, bottom: 5),
-                            child: pw.Text(
-                              "No alarms",
-                            ),
-                          ),
-                          pw.Divider(),
-                          pw.SizedBox(height: 5),
-                          pw.Text("Remark:", style: regularStyle),
-                          pw.Padding(
-                            padding: pw.EdgeInsets.only(left: 20),
-                            child: pw.Row(
-                              mainAxisAlignment:
-                                  pw.MainAxisAlignment.spaceBetween,
-                              children: [
-                                pw.Text(remark, style: regularStyle),
-                                pw.Text("Sign:                         "),
-                              ],
-                            ),
-                          ),
-                        ]),
-                ],
-              ),
-          ];
-          return content;
-        },
-        footer: (pw.Context context) {
-          return pw.Column(
-            mainAxisAlignment: pw.MainAxisAlignment.center,
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
+    pw.Widget footer(int pageNumber, int pagesCount) {
+      return pw.Column(
+        mainAxisAlignment: pw.MainAxisAlignment.center,
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Divider(),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Divider(),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Expanded(
-                    child: pw.Align(
-                      alignment: pw.Alignment.center,
-                      child: pw.Text(
-                        'Report generated from OxyData by wavevisions.in',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
+              pw.Expanded(
+                child: pw.Align(
+                  alignment: pw.Alignment.center,
+                  child: pw.Text(
+                    'Report generated from OxyData by wavevisions.in',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
                     ),
                   ),
-                  pw.Text(
-                    'Page ${context.pageNumber} | ${context.pagesCount}',
-                    style: regularStyle,
-                  ),
-                ],
+                ),
+              ),
+              pw.Text(
+                'Page ${pageNumber} | ${pagesCount}',
+                style: regularStyle,
               ),
             ],
-          );
-        },
-      ),
-    );
-
-    // Add Limit Conditions Table
-    if (combinedDataRows.length > 8) {
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.only(top: 20, right: 20, left: 20, bottom: 10),
-          build: (pw.Context context) {
-            final rowsPerPage = 31; // Define how many rows per page
-            final pageCount = (combinedDataRows.length / rowsPerPage).ceil();
-
-            return List.generate(pageCount, (pageIndex) {
-              final start = pageIndex * rowsPerPage;
-              final end = (start + rowsPerPage < combinedDataRows.length)
-                  ? start + rowsPerPage
-                  : combinedDataRows.length;
-
-              final pageRows = combinedDataRows.sublist(start, end);
-
-              return pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  // Space between the table name and the table
-                  pw.Table.fromTextArray(
-                    headers: headers,
-                    data: pageRows,
-                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    cellAlignment: pw.Alignment.centerLeft,
-                    tableWidth: pw.TableWidth.max,
-                  ),
-                  pw.SizedBox(height: 10),
-                  if (dataAlarms.isEmpty)
-                    pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            "Alarm Condition:",
-                            style: pw.TextStyle(
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                          ),
-                          pw.SizedBox(height: 3),
-                          pw.Container(
-                            alignment: pw.Alignment.center,
-                            padding: pw.EdgeInsets.only(top: 5, bottom: 5),
-                            child: pw.Text(
-                              "No alarms",
-                            ),
-                          )
-                        ]),
-                  pw.Divider(),
-                  pw.SizedBox(height: 5),
-                  pw.Text("Remark:", style: regularStyle),
-                  pw.Padding(
-                    padding: pw.EdgeInsets.only(left: 20),
-                    child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(remark, style: regularStyle),
-                        pw.Text("Sign:                         "),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            });
-          },
-          footer: (pw.Context context) {
-            return pw.Column(
-              mainAxisAlignment: pw.MainAxisAlignment.center,
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                pw.Divider(),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Expanded(
-                      child: pw.Align(
-                        alignment: pw.Alignment.center,
-                        child: pw.Text(
-                          'Report generated from OxyData by wavevisions.in',
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    pw.Text(
-                      'Page ${context.pageNumber} | ${context.pagesCount}',
-                      style: regularStyle,
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
-        ),
+          ),
+        ],
       );
     }
 
-    // Add Alarm Conditions Table
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.only(top: 20, right: 20, left: 20, bottom: 10),
-        footer: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            mainAxisAlignment: pw.MainAxisAlignment.center,
+    pw.Widget header() {
+      return pw
+          .Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.center,
+          children: [
+            pw.Text('OxyData ${title} Report', style: titleStyle),
+          ],
+        ),
+        pw.Divider(),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text("Hospital name: $hospitalName"),
+            pw.Text("Location: ${prefs.getString('locationName') ?? 'null'}"),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+                "OxyData unit Sr no : ${prefs.getString('serialNo') ?? 'null'}"),
+            if (title == "Daily")
+              pw.Text(
+                  "Date: ${DateFormat('dd-MM-yyyy').format(_selectedDate)}"),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+                "Report Generation Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}"),
+            if (title == "Weekly" || title == "Monthly")
+              pw.Text(
+                  "Start Date: ${DateFormat('dd-MM-yyyy').format(_weekStartDate)}"),
+          ],
+        ),
+        if (title == "Weekly" || title == "Monthly")
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
             children: [
-              if (context.pageNumber == context.pagesCount) ...[
-                pw.Divider(),
-                pw.SizedBox(height: 5),
-                pw.Text("Remark:", style: regularStyle),
-                pw.Padding(
-                  padding: pw.EdgeInsets.only(left: 20),
-                  child: pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(remark, style: regularStyle),
-                      pw.Text("Sign:                         "),
-                    ],
-                  ),
-                ),
-                pw.SizedBox(height: 18),
-              ],
-              pw.Divider(),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Expanded(
-                    child: pw.Align(
-                      alignment: pw.Alignment.center,
-                      child: pw.Text(
-                        'Report generated from OxyData by wavevisions.in',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  pw.Text(
-                    'Page ${context.pageNumber} | ${context.pagesCount}',
-                    style: regularStyle,
-                  ),
-                ],
-              ),
+              pw.Text(
+                  "End Date: ${DateFormat('dd-MM-yyyy').format(_weekEndDate)}"),
             ],
-          );
-        },
-        build: (pw.Context context) {
-          final rowsPerPage = 28; // Define how many rows per page
-          final pageCount = (dataAlarmsRow.length / rowsPerPage).ceil();
+          ),
+        pw.Divider(),
+        pw.SizedBox(height: 5),
+      ]);
+    }
 
-          return List.generate(pageCount, (pageIndex) {
-            final start = pageIndex * rowsPerPage;
-            final end = (start + rowsPerPage < dataAlarmsRow.length)
-                ? start + rowsPerPage
-                : dataAlarmsRow.length;
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.only(left: 20, right: 20, bottom: 20, top: 5),
+      footer: (pw.Context context) =>
+          footer(context.pageNumber, context.pagesCount),
+      header: (pw.Context context) => header(),
+      build: (pw.Context context) {
+        List<pw.Widget> content = [];
 
-            final pageRows = dataAlarmsRow.sublist(start, end);
-
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+        // Header Section
+        content.add(
+          pw.Container(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                if (pageIndex == 0) ...[
+                if (title == "Daily")
                   pw.Text(
-                    "Alarm Condition:",
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
+                      "Graph - Time (HH 00 to 24) Vs Oxygen Parameter Values"),
+                if (title == "Weekly")
+                  pw.Text(
+                      "Graph - Day (Sunday to Saturday) Vs Oxygen Parameter Values"),
+                if (title == "Monthly")
+                  pw.Text(
+                      "Graph - Date (01-MM to 30-MM) Vs Oxygen Parameter Values"),
+                pw.SizedBox(height: 5),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.Image(pw.MemoryImage(chartImage), height: 200),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                pw.Padding(
+                  padding: pw.EdgeInsets.symmetric(horizontal: 0),
+                  child: pw.Table.fromTextArray(
+                    headers: [
+                      'Current period overview',
+                      'Minimum',
+                      'Maximum',
+                      'Average'
+                    ],
+                    data: [
+                      [
+                        'Oxygen Purity  (%)',
+                        '$_minPurity',
+                        '$_maxPurity',
+                        '${_avgPurity.toStringAsFixed(2)}'
+                      ],
+                      [
+                        'Gas Pressure   (PSI)',
+                        '$_minPressure',
+                        '$_maxPressure',
+                        '${_avgPressure.toStringAsFixed(2)}'
+                      ],
+                      [
+                        'Gas Flow   (LPM)',
+                        '$_minFlow',
+                        '$_maxFlow',
+                        '${_avgFlow.toStringAsFixed(2)}'
+                      ],
+                      [
+                        'Gas Temperature  (°C)',
+                        '$_minTemperature',
+                        '$_maxTemperature',
+                        '${_avgTemperature.toStringAsFixed(2)}'
+                      ],
+                    ],
+                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    cellAlignment: pw.Alignment.centerLeft,
+                    tableWidth: pw.TableWidth.max,
                   ),
-                  pw.SizedBox(
-                      height: 3), // Space between the title and the table
-                ],
-                pw.Table.fromTextArray(
-                  headers: alarmHeaders,
-                  data: pageRows,
-                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                  cellAlignment: pw.Alignment.centerLeft,
-                  tableWidth: pw.TableWidth.max,
                 ),
               ],
-            );
-          });
-        },
-      ),
-    );
+            ),
+          ),
+        );
+
+        content.add(pw.SizedBox(height: 15));
+        content.add(pw.Text('Limit conditions:', style: titleStyle));
+
+        // Split Table Rows
+        _addPaginatedTable(content, headers, combinedDataRows);
+        content.add(pw.SizedBox(height: 15));
+        content.add(pw.Text('Alarm conditions:', style: titleStyle));
+        _addPaginatedTable(content, alarmHeaders, dataAlarmsRow);
+
+        content.add(pw.SizedBox(height: 22));
+        content.add(pw.Divider());
+        content.add(pw.Text('Remarks:', style: regularStyle));
+        content.add(pw.SizedBox(height: 8));
+        content.add(pw.Text('$remark', style: regularStyle));
+        content.add(pw.SizedBox(height: 8));
+        content.add(
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.SizedBox(width: 300),
+              pw.Text('Sign:', style: regularStyle),
+              pw.SizedBox(width: 150), // Adjust the width as necessary
+            ],
+          ),
+        );
+
+        return content;
+      },
+    ));
 
     try {
       final documentsDir =
@@ -918,6 +678,29 @@ class GenerateReport {
       print("Open File Result: ${result.message}");
     } catch (e) {
       print("Failed to save or open file: $e");
+    }
+  }
+
+  void _addPaginatedTable(List<pw.Widget> content, List<String> headers,
+      List<List<String>> dataRows) {
+    const int rowsPerPage = 25; // Adjust as necessary
+    for (int i = 0; i < dataRows.length; i += rowsPerPage) {
+      int endIndex = (i + rowsPerPage < dataRows.length)
+          ? i + rowsPerPage
+          : dataRows.length;
+      content.add(
+        pw.Table.fromTextArray(
+          headers: headers,
+          data: dataRows.sublist(i, endIndex),
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          cellAlignment: pw.Alignment.centerLeft,
+          tableWidth: pw.TableWidth.max,
+        ),
+      );
+
+      if (endIndex < dataRows.length) {
+        content.add(pw.NewPage());
+      }
     }
   }
 }

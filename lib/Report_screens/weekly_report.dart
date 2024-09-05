@@ -187,6 +187,7 @@ class _WeeklyReportState extends State<WeeklyReport> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Color.fromARGB(141, 241, 241, 241),
         leading: IconButton(
             onPressed: () {
               Navigator.of(context).pop();

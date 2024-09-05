@@ -62,7 +62,7 @@ class _DailyReportState extends State<DailyReport> {
 
     for (DateTime time = startOfDay;
         time.isBefore(endOfDay);
-        time = time.add(Duration(minutes: 1))) {
+        time = time.add(const Duration(minutes: 1))) {
       fullDayMap[time] = {
         'purity': -1.0,
         'flowRate': -1.0,
@@ -121,11 +121,9 @@ class _DailyReportState extends State<DailyReport> {
 
   void printLatestLimitSettings(DateTime selectDate) async {
     final _db = await AppDbSingleton().database;
-    print("vnbj bjk bkb knfkgjv bn ");
     Map<String, LimitSettingsTableData?> results =
         await _db.getLatestLimitSettingsForAllTypesBeforeDate(
             selectDate, widget.serialNo);
-    print("vnbj bjk bkb knfkgjv bn ");
     _datainitialLimit.clear(); // Clear the list to store fresh data
 
     results.forEach((type, data) {
@@ -186,6 +184,20 @@ class _DailyReportState extends State<DailyReport> {
     });
   }
 
+  double _getLPMYAxisMaxValue(String serialNo) {
+    if (serialNo.startsWith('OP1')) {
+      return 100;
+    } else if (serialNo.startsWith('OP2')) {
+      return 250;
+    } else if (serialNo.startsWith('OP5')) {
+      return 500;
+    } else if (serialNo.startsWith('OP9')) {
+      return 1000;
+    } else {
+      return 10;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     String date = DateFormat('dd-MM-yyyy').format(_selectedDate);
@@ -196,15 +208,16 @@ class _DailyReportState extends State<DailyReport> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Color.fromARGB(141, 241, 241, 241),
         leading: IconButton(
             onPressed: () {
               Navigator.of(context).pop();
             },
-            icon: Icon(Icons.arrow_back)),
-        title: Text('Daily Report'),
+            icon: const Icon(Icons.arrow_back)),
+        title: const Text('Daily Report'),
         actions: [
           Text("Selected Date: $date"),
-          SizedBox(
+          const SizedBox(
             width: 15,
           ),
           if (_dataPoints.isNotEmpty)
@@ -227,7 +240,8 @@ class _DailyReportState extends State<DailyReport> {
             ? Center(
                 child: Text(
                   "No data found!     ($date)",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               )
             : Row(
@@ -235,7 +249,7 @@ class _DailyReportState extends State<DailyReport> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Container(
+                    child: SizedBox(
                       height: MediaQuery.of(context).size.height * 0.80,
                       width: MediaQuery.of(context).size.width * 0.80,
                       child: SfCartesianChart(
@@ -247,15 +261,15 @@ class _DailyReportState extends State<DailyReport> {
                           maximum: endOfDay,
                           edgeLabelPlacement: EdgeLabelPlacement.shift,
                           rangePadding: ChartRangePadding.none,
-                          labelStyle: TextStyle(
+                          labelStyle: const TextStyle(
                               color: Colors.black,
                               fontSize: 16,
                               fontWeight: FontWeight.bold),
-                          majorGridLines: MajorGridLines(
+                          majorGridLines: const MajorGridLines(
                             color: Colors.black,
                             width: 1,
                           ),
-                          axisLine: AxisLine(
+                          axisLine: const AxisLine(
                             color: Colors.black,
                             width: 2,
                           ),
@@ -278,8 +292,8 @@ class _DailyReportState extends State<DailyReport> {
                             width: 2,
                           ),
                         ),
-                        axes: const <ChartAxis>[
-                          NumericAxis(
+                        axes: <ChartAxis>[
+                          const NumericAxis(
                             name: 'spacerYAxis',
                             opposedPosition: false,
                             minimum: 0,
@@ -299,18 +313,17 @@ class _DailyReportState extends State<DailyReport> {
                             name: 'primaryYAxis2',
                             opposedPosition: false,
                             minimum: 0,
-                            maximum: 20,
-                            interval: 4,
-                            labelStyle: TextStyle(
+                            maximum: _getLPMYAxisMaxValue(widget.serialNo),
+                            labelStyle: const TextStyle(
                                 color: Colors.blue,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold),
-                            majorGridLines: MajorGridLines(
+                            majorGridLines: const MajorGridLines(
                               color: Colors.black,
                               width: 1,
                             ),
                           ),
-                          NumericAxis(
+                          const NumericAxis(
                             name: 'secondaryYAxis1',
                             opposedPosition: true,
                             minimum: 0,
@@ -329,7 +342,7 @@ class _DailyReportState extends State<DailyReport> {
                               width: 2,
                             ),
                           ),
-                          NumericAxis(
+                          const NumericAxis(
                             name: 'spacerYAxis1',
                             opposedPosition: true,
                             minimum: 0,
@@ -345,7 +358,7 @@ class _DailyReportState extends State<DailyReport> {
                               color: Colors.transparent,
                             ),
                           ),
-                          NumericAxis(
+                          const NumericAxis(
                             name: 'secondaryYAxis2',
                             opposedPosition: true,
                             minimum: 0,
@@ -403,7 +416,7 @@ class _DailyReportState extends State<DailyReport> {
                             color: Colors.green,
                           ),
                         ],
-                        legend: Legend(isVisible: true),
+                        legend: const Legend(isVisible: true),
                         tooltipBehavior: TooltipBehavior(enable: true),
                       ),
                     ),
@@ -431,7 +444,7 @@ class _DailyReportState extends State<DailyReport> {
               .generateReportPdf(context, chartImage, widget.remark,
                   selectDate: _selectedDate);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Report generated successfully!')),
+            const SnackBar(content: Text('Report generated successfully!')),
           );
         } catch (error) {
           ScaffoldMessenger.of(context).showSnackBar(

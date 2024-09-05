@@ -32,7 +32,7 @@ class _MonthlyReportState extends State<MonthlyReport> {
   late List<Map<String, dynamic>> _dataPoints;
   late List<Map<String, dynamic>> _dataPointsmove;
   late List<Map<String, dynamic>> _dataLimits;
-  late List<Map<String, dynamic>> _datainitialLimit;
+  List<Map<String, dynamic>> _datainitialLimit = [];
   late List<Map<String, dynamic>> _dataAlarms;
 
   final GlobalKey _chartKey = GlobalKey();
@@ -50,6 +50,7 @@ class _MonthlyReportState extends State<MonthlyReport> {
 
     _getMonthlyData();
     _getMonthlyLimitData();
+    _getMonthlyAlarmData();
   }
 
   void _getMonthlyData() async {
@@ -163,13 +164,11 @@ class _MonthlyReportState extends State<MonthlyReport> {
 
   void printLatestLimitSettings(DateTime selectDate) async {
     final _db = await AppDbSingleton().database;
-    print("vnbj bjk bkb knfkgjv bn  $selectDate");
     Map<String, LimitSettingsTableData?> results =
         await _db.getLatestLimitSettingsForAllTypesBeforeDate(
             selectDate, widget.serialNo);
 
     _datainitialLimit.clear(); // Clear the list to store fresh data
-    print("vnbj bjk bkb knfkgjv bn ");
     results.forEach((type, data) {
       if (data != null) {
         print('Type: $type');
@@ -214,12 +213,13 @@ class _MonthlyReportState extends State<MonthlyReport> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Color.fromARGB(141, 241, 241, 241),
         leading: IconButton(
             onPressed: () {
               Navigator.of(context).pop();
             },
-            icon: Icon(Icons.arrow_back)),
-        title: Text('Monthly Report'),
+            icon: const Icon(Icons.arrow_back)),
+        title: const Text('Monthly Report'),
         actions: [
           Text("Selected Month: ${widget.selectedMonth}"),
           SizedBox(

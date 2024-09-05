@@ -324,6 +324,7 @@ class _DemoWidState extends State<DemoWid> {
     ];
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -352,7 +353,7 @@ class _DemoWidState extends State<DemoWid> {
           ],
         ),
         toolbarHeight: MediaQuery.of(context).size.height * 0.09,
-        backgroundColor: Color.fromRGBO(255, 255, 255, 0.612),
+        backgroundColor: Color.fromARGB(141, 241, 241, 241),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {

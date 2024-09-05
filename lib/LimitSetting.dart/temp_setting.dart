@@ -172,6 +172,9 @@ class _TempSettingState extends State<TempSetting> {
       } else if (_holdTime == 11) {
         _resetDecrementTimer(
             Duration(milliseconds: 75), callback); // Fast speed
+      } else if (_holdTime == 15) {
+        _resetDecrementTimer(
+            Duration(milliseconds: 50), callback); // Fast speed
       }
     });
   }
@@ -192,6 +195,7 @@ class _TempSettingState extends State<TempSetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           leading: IconButton(
             onPressed: () {
@@ -200,20 +204,21 @@ class _TempSettingState extends State<TempSetting> {
             icon: Icon(Icons.arrow_back_outlined),
           ),
           title: Center(
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Temp Limit Settings",
+                  "Temp Limit Settings ",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  "°C",
-                  style: TextStyle(fontSize: 15),
+                  " (°C)",
+                  style: TextStyle(fontSize: 20),
                 ),
               ],
             ),
           ),
-          backgroundColor: Color.fromRGBO(255, 255, 255, 1),
+          backgroundColor: Color.fromARGB(141, 241, 241, 241),
           bottom: PreferredSize(
             preferredSize: Size.fromHeight(4.0),
             child: Container(
@@ -221,6 +226,7 @@ class _TempSettingState extends State<TempSetting> {
               height: 4.0,
             ),
           ),
+          toolbarHeight: 40,
         ),
         body: Padding(
             padding: const EdgeInsets.all(8.0),
@@ -280,7 +286,6 @@ class _TempSettingState extends State<TempSetting> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: decrement,
           onTapDown: (_) {
             _startIncrementTimer(decrement);
           },
@@ -316,7 +321,6 @@ class _TempSettingState extends State<TempSetting> {
           ),
         ),
         GestureDetector(
-          onTap: increment,
           onTapDown: (_) {
             _startDecrementTimer(increment);
           },

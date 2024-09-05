@@ -109,12 +109,13 @@ class _OldReportScreenState extends State<OldReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Center(
           child: Text("Report  ${widget.serialNo}"),
         ),
         toolbarHeight: 40,
-        backgroundColor: Color.fromRGBO(255, 255, 255, 0.612),
+        backgroundColor: Color.fromARGB(141, 241, 241, 241),
       ),
       body: SingleChildScrollView(
         child: Container(
@@ -134,11 +135,11 @@ class _OldReportScreenState extends State<OldReportScreen> {
                       borderRadius:
                           BorderRadius.circular(30.0), // Rounded corners
                     ),
-                    padding: EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 30,
                       vertical: 15,
                     ),
-                    textStyle: TextStyle(
+                    textStyle: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -152,7 +153,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
                     ? SizedBox(height: 20)
                     : Text(
                         'Selected Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                 ElevatedButton(
@@ -165,11 +166,11 @@ class _OldReportScreenState extends State<OldReportScreen> {
                       borderRadius:
                           BorderRadius.circular(30.0), // Rounded corners
                     ),
-                    padding: EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 30,
                       vertical: 15,
                     ),
-                    textStyle: TextStyle(
+                    textStyle: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -177,18 +178,18 @@ class _OldReportScreenState extends State<OldReportScreen> {
                   onPressed: () {
                     _selectDateAndCalculateWeek(context);
                   },
-                  child: Text(' Weekly Report '),
+                  child: const Text(' Weekly Report '),
                 ),
                 _weekRange == null
-                    ? SizedBox(height: 20)
+                    ? const SizedBox(height: 20)
                     : Text(
                         'Selected Week: $_weekRange',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    foregroundColor: Color.fromARGB(255, 255, 255, 255),
+                    foregroundColor: const Color.fromARGB(255, 255, 255, 255),
                     backgroundColor: Colors.blue, // Text color
                     shadowColor: Colors.blueAccent, // Shadow color
                     elevation: 10, // Elevation
@@ -196,11 +197,11 @@ class _OldReportScreenState extends State<OldReportScreen> {
                       borderRadius:
                           BorderRadius.circular(30.0), // Rounded corners
                     ),
-                    padding: EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 30,
                       vertical: 15,
                     ),
-                    textStyle: TextStyle(
+                    textStyle: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -214,7 +215,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
                     ? Text("")
                     : Text(
                         'Selected Month: $_selectedMonth',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 14, fontWeight: FontWeight.bold),
                       ),
               ],
@@ -235,7 +236,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
             borderRadius: BorderRadius.circular(20.0),
           ),
           child: Container(
-            padding: EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(12.0),
             height: MediaQuery.of(context).size.height * 0.2,
             width: MediaQuery.of(context).size.width * 0.9,
             child: Column(
@@ -251,7 +252,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
                             Expanded(
                               child: TextField(
                                 controller: _remarkController,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   border: InputBorder.none,
                                   hintText: 'Add Remarks...',
                                 ),
@@ -261,14 +262,14 @@ class _OldReportScreenState extends State<OldReportScreen> {
                             ),
                             SizedBox(width: 10),
                             TextButton(
-                              child: Text('Cancel'),
+                              child: const Text('Cancel'),
                               onPressed: () {
                                 Navigator.of(context).pop(null);
                               },
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             ElevatedButton(
-                              child: Text('Submit'),
+                              child: const  Text('Submit'),
                               onPressed: () {
                                 Navigator.of(context).pop(reportType);
                               },

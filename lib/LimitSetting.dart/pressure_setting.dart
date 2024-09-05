@@ -195,7 +195,9 @@ class _PressureSettingState extends State<PressureSetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
+          toolbarHeight: 40,
           leading: IconButton(
             onPressed: () {
               Navigator.pop(context, 1);
@@ -203,25 +205,26 @@ class _PressureSettingState extends State<PressureSetting> {
             icon: Icon(Icons.arrow_back_outlined),
           ),
           title: Center(
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Pressure Limit Settings",
+                  "Pressure Limit Settings ",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  "PSI",
-                  style: TextStyle(fontSize: 15),
+                  " (PSI)",
+                  style: TextStyle(fontSize: 20),
                 ),
               ],
             ),
           ),
-          backgroundColor: Color.fromRGBO(255, 255, 255, 1),
+          backgroundColor: Color.fromARGB(141, 241, 241, 241),
           bottom: PreferredSize(
             preferredSize: Size.fromHeight(4.0),
             child: Container(
               color: Colors.black,
-              height: 4.0,
+              height: 2,
             ),
           ),
         ),
