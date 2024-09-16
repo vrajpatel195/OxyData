@@ -16,6 +16,8 @@ class _TempState extends State<TempDemo> {
   double maxLimit = 60;
   double minLimit = 0;
   Timer? _timer;
+  Duration _timerDuration = Duration(milliseconds: 300);
+  int _holdTime = 0;
   @override
   void initState() {
     loadData();
@@ -33,29 +35,63 @@ class _TempState extends State<TempDemo> {
   }
 
   void updateMaxLimit(double value) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      maxLimit = (value.clamp(1.0, double.infinity) - 1.0).toDouble() + 1.0;
-      prefs.setDouble('Temp_maxLimit', maxLimit);
+      double newMaxLimit =
+          value.clamp(minLimit + 1.0, double.infinity).toDouble();
+      maxLimit = newMaxLimit;
     });
   }
 
   void updateMinLimit(double value) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       minLimit = (value.clamp(0.0, maxLimit.toDouble() - 1.0)).toDouble();
-      prefs.setDouble('Temp_minLimit', minLimit);
     });
   }
 
+  void _saveLimit() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setDouble('Temp_maxLimit', maxLimit);
+    prefs.setDouble('Temp_minLimit', minLimit);
+  }
+
   void _startTimer(void Function() callback) {
-    _timer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+    _timerValue(callback);
+    _timer = Timer.periodic(_timerDuration, (timer) {
+      _timerValue(callback);
+    });
+  }
+
+  void _timerValue(VoidCallback callback) {
+    setState(() {
+      _holdTime++;
       callback();
+      if (_holdTime == 2) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 250), callback); // Medium speed
+      } else if (_holdTime == 5) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 150), callback); // Fast speed
+      } else if (_holdTime == 10) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 100), callback); // Fast speed
+      } else if (_holdTime == 20) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 75), callback); // Fast speed
+      }
+    });
+  }
+
+  void _resetIncrementTimer(Duration duration, VoidCallback callback) {
+    _timer?.cancel();
+    _timer = Timer.periodic(duration, (timer) {
+      _timerValue(callback); // Pass the actual increment logic
     });
   }
 
   void _stopTimer() {
     _timer?.cancel();
+    _holdTime = 0; // Reset hold time when the button is released
+    _timerDuration = Duration(milliseconds: 300); // Reset to slow speed
   }
 
   @override
@@ -222,6 +258,7 @@ class _TempState extends State<TempDemo> {
               ),
               GestureDetector(
                 onTap: () {
+                  _saveLimit();
                   _changeColor();
                   final value = 1;
                   Navigator.pop(context, value);

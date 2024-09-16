@@ -99,7 +99,7 @@ class _PressureSettingState extends State<PressureSetting> {
 
   void _decrementMinLimit() {
     setState(() {
-      double newMin = pressuremin - 0.1;
+      double newMin = double.parse(pressuremin.toStringAsFixed(1)) - 0.1;
 
       if (newMin >= 0) {
         pressuremin = newMin;
@@ -131,6 +131,15 @@ class _PressureSettingState extends State<PressureSetting> {
       } else if (_holdTime == 20) {
         _resetIncrementTimer(
             Duration(milliseconds: 75), callback); // Fast speed
+      } else if (_holdTime == 35) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 50), callback); // Fast speed
+      } else if (_holdTime == 60) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 25), callback); // Fast speed
+      } else if (_holdTime == 90) {
+        _resetIncrementTimer(
+            Duration(milliseconds: 10), callback); // Fast speed
       }
     });
   }
@@ -145,50 +154,6 @@ class _PressureSettingState extends State<PressureSetting> {
   void _stopIncrementTimer() {
     _incrementTimer?.cancel();
     _holdTime = 0; // Reset hold time when the button is released
-    _incrementDuration = Duration(milliseconds: 300); // Reset to slow speed
-  }
-
-  // Dynamic speed adjustment for decrementing
-  void _startDecrementTimer(VoidCallback callback) {
-    _decrementValue(callback);
-    _decrementTimer = Timer.periodic(_incrementDuration, (timer) {
-      _decrementValue(callback);
-    });
-  }
-
-  void _decrementValue(VoidCallback callback) {
-    setState(() {
-      _holdTime++;
-      callback();
-      if (_holdTime == 2) {
-        _resetDecrementTimer(
-            Duration(milliseconds: 250), callback); // Medium speed
-      } else if (_holdTime == 5) {
-        _resetDecrementTimer(
-            Duration(milliseconds: 150), callback); // Fast speed
-      } else if (_holdTime == 8) {
-        _resetDecrementTimer(
-            Duration(milliseconds: 100), callback); // Fast speed
-      } else if (_holdTime == 11) {
-        _resetDecrementTimer(
-            Duration(milliseconds: 75), callback); // Fast speed
-      } else if (_holdTime == 15) {
-        _resetDecrementTimer(
-            Duration(milliseconds: 50), callback); // Fast speed
-      }
-    });
-  }
-
-  void _resetDecrementTimer(Duration duration, VoidCallback callback) {
-    _decrementTimer?.cancel();
-    _decrementTimer = Timer.periodic(duration, (timer) {
-      _decrementValue(callback); // Pass the actual decrement logic
-    });
-  }
-
-  void _stopDecrementTimer() {
-    _decrementTimer?.cancel();
-    _holdTime = 0; // Reset hold time
     _incrementDuration = Duration(milliseconds: 300); // Reset to slow speed
   }
 
@@ -287,13 +252,13 @@ class _PressureSettingState extends State<PressureSetting> {
       children: [
         GestureDetector(
           onTapDown: (_) {
-            _startDecrementTimer(decrement);
+            _startIncrementTimer(decrement);
           },
           onTapUp: (_) {
-            _stopDecrementTimer();
+            _stopIncrementTimer();
           },
           onTapCancel: () {
-            _stopDecrementTimer();
+            _stopIncrementTimer();
           },
           child: Icon(Icons.remove, size: screenHeight / 8),
         ),

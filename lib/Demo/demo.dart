@@ -192,7 +192,6 @@ class _DemoWidState extends State<DemoWid> {
     try {
       setState(() {
         Purity_maxLimit = prefs.getDouble('Purity_maxLimit') ?? 0;
-        print("purityyy max data: ${Purity_maxLimit}");
         Purity_minLimit = prefs.getDouble('Purity_minLimit') ?? 0;
         Flow_maxLimit = prefs.getDouble('Flow_maxLimit') ?? 0;
         Flow_minLimit = prefs.getDouble('Flow_minLimit') ?? 0;
@@ -243,32 +242,49 @@ class _DemoWidState extends State<DemoWid> {
 
   void _updateString() {
     if (_latestPurity > Purity_maxLimit! || _latestPurity < Purity_minLimit!) {
-      // print("Purity max: $Purity_maxLimit");
-      // _storeAlarm(_latestPurity, Purity_maxLimit!, Purity_minLimit!, "Purity");
-      _addString("Purity is out of range");
+      if (_latestPurity > Purity_maxLimit!) {
+        _addString("Purity is Higher than Limit.");
+      } else {
+        _addString("Purity is Lower than Limit.");
+      }
     } else {
-      _removeString("Purity is out of range");
+      _removeString("Purity is Higher than Limit.");
+      _removeString("Purity is Lower than Limit.");
     }
 
     if (_latestFlowRate > Flow_maxLimit! || _latestFlowRate < Flow_minLimit!) {
-      //  _storeAlarm(_latestFlowRate, Flow_maxLimit!, Flow_minLimit!, "Flow");
-      _addString("Flow is out of range");
+      if (_latestFlowRate > Flow_maxLimit!) {
+        _addString("Flow is Higher than Limit.");
+      } else {
+        _addString("Flow is Lower than Limit.");
+      }
     } else {
-      _removeString("Flow is out of range");
+      _removeString("Flow is Higher than Limit.");
+      _removeString("Flow is Lower than Limit.");
     }
 
     if (_latestPressure > Pressure_maxLimit! ||
         _latestPressure < Pressure_minLimit!) {
-      _addString("Pressure is out of range");
+      if (_latestPressure > Pressure_maxLimit!) {
+        _addString("Pressure is Higher than Limit.");
+      } else {
+        _addString("Pressure is Lower than Limit.");
+      }
     } else {
-      _removeString("Pressure is out of range");
+      _removeString("Pressure is Higher than Limit.");
+      _removeString("Pressure is Lower than Limit.");
     }
 
     if (_latestTemperature > Temp_maxLimit! ||
         _latestTemperature < Temp_minLimit!) {
-      _addString("Temp is out of range");
+      if (_latestTemperature > Temp_maxLimit!) {
+        _addString("Temp is Higher than Limit.");
+      } else {
+        _addString("Temp is Lower than Limit.");
+      }
     } else {
-      _removeString("Temp is out of range");
+      _removeString("Temp is Higher than Limit.");
+      _removeString("Temp is Lower than Limit.");
     }
   }
 

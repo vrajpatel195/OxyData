@@ -219,21 +219,40 @@ class _MonthlyReportState extends State<MonthlyReport> {
               Navigator.of(context).pop();
             },
             icon: const Icon(Icons.arrow_back)),
-        title: const Text('Monthly Report'),
+        title: const Text('Monthly Report OxyData'),
         actions: [
           Text("Selected Month: ${widget.selectedMonth}"),
           SizedBox(
             width: 15,
           ),
           if (_dataPoints.isNotEmpty)
-            ElevatedButton(
-              onPressed: () {
-                _generatePdfAfterRender();
-              },
-              child: _isLoading ? CircularProgressIndicator() : Text("Report"),
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
+            Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: ElevatedButton(
+                onPressed: () {
+                  _generatePdfAfterRender();
+                },
+                child: _isLoading
+                    ? CircularProgressIndicator()
+                    : const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.picture_as_pdf, size: 20),
+                          SizedBox(width: 10),
+                          Text(
+                            'Report',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.blue, // Text color
+                  shadowColor: Colors.blueAccent, // Shadow color
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
                 ),
               ),
             ),

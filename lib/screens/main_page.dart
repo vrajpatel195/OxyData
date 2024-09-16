@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -37,6 +38,9 @@ class _DashboardState extends State<Dashboard>
   String? selectedSerialNo;
   List<String> serialNumbers = [];
 
+  String _formattedDateTime = '';
+  late Timer _dateTimeTimer;
+
   @override
   void initState() {
     super.initState();
@@ -59,12 +63,25 @@ class _DashboardState extends State<Dashboard>
         curve: Curves.easeInOut,
       ),
     );
+    _updateDateTime();
+    _dateTimeTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      _updateDateTime();
+    });
+  }
+
+  void _updateDateTime() {
+    final now = DateTime.now();
+    final formatter = DateFormat('dd/MM/yyyy  HH:mm:ss  ');
+    setState(() {
+      _formattedDateTime = formatter.format(now);
+    });
   }
 
   @override
   void dispose() {
     _stopWifiCheckTimer();
     _animationController.dispose();
+    _dateTimeTimer.cancel();
     super.dispose();
   }
 
@@ -219,14 +236,14 @@ class _DashboardState extends State<Dashboard>
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 "Sr NO. $serialNo",
                 style: const TextStyle(
                   fontFamily: "NexaRegular",
                   color: Color.fromARGB(255, 0, 0, 0),
-                  fontSize: 16,
+                  fontSize: 12,
                 ),
               ),
               Expanded(
@@ -238,7 +255,7 @@ class _DashboardState extends State<Dashboard>
                       style: const TextStyle(
                         fontFamily: "NexaBold",
                         color: Color.fromARGB(255, 0, 0, 0),
-                        fontSize: 25,
+                        fontSize: 22,
                       ),
                       children: const [
                         TextSpan(
@@ -246,11 +263,22 @@ class _DashboardState extends State<Dashboard>
                           style: TextStyle(
                             fontFamily: "NexaRegular",
                             color: Color.fromARGB(255, 0, 0, 0),
-                            fontSize: 20,
+                            fontSize: 18,
                           ),
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ),
+              Container(
+                width: 150,
+                child: Text(
+                  _formattedDateTime,
+                  style: const TextStyle(
+                    fontFamily: "NexaRegular",
+                    color: Color.fromARGB(255, 0, 0, 0),
+                    fontSize: 13,
                   ),
                 ),
               ),

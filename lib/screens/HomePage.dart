@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -53,13 +54,18 @@ class _LineCharWidState extends State<LineCharWid> {
   double? Temp_minLimit;
 
   DateTime? appStartTime;
-
+  bool isMuted1 = true;
   int time = 0;
 
+  bool purityAlarmTriggered = false;
+  bool pressureAlarmTriggered = false;
+  bool flowAlarmTriggered = false;
+  bool tempAlarmTriggered = false;
   int _currentIndex = 0;
   String _currentString = 'SYSTEM IS RUNNING OK';
   final Set<String> _uniqueStrings = {};
   List<String> _uniqueStringList = [];
+  final AudioPlayer bgAudio = AudioPlayer();
 
   // final StreamController<List<ChartData>> _streamController =
   //     StreamController<List<ChartData>>.broadcast();
@@ -170,6 +176,7 @@ class _LineCharWidState extends State<LineCharWid> {
     appStartTime = DateTime.now();
     _saveLimits();
     _initialData();
+    loadMuteState();
 
     _updateController = StreamController<void>.broadcast();
 
@@ -417,12 +424,10 @@ class _LineCharWidState extends State<LineCharWid> {
     final _db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
     serialNo = await prefs.getString('serialNo') ?? '';
-    if (_latestPurity! > Purity_maxLimit! ||
-        _latestPurity! < Purity_minLimit!) {
+    if ((_latestPurity! > Purity_maxLimit! ||
+        _latestPurity! < Purity_minLimit!)) {
       // print("Purity max: $Purity_maxLimit");
-
-      double previousPurity = prefs.getDouble("PurityP") ?? -1.0;
-      if (_latestPurity != previousPurity) {
+      if (!purityAlarmTriggered) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestPurity!),
@@ -434,27 +439,37 @@ class _LineCharWidState extends State<LineCharWid> {
           ));
           prefs.setDouble("PurityP", _latestPurity!);
           List<AlarmTableData> storedData = await _db.getAllAlarms();
+          purityAlarmTriggered = true;
           print("Store Alarms: $storedData");
         } catch (e) {
           print("Error to store alarms : $e");
         }
       }
+
       if (_latestPurity! > Purity_maxLimit!) {
-        _addString("Purity is Higher than Limit");
+        _addString("Purity is Higher than Set Limit");
       } else {
-        _addString("Purity is Lower than Limit");
+        _addString("Purity is Lower than Set Limit");
       }
+    } else if (_latestPurity! >= Purity_minLimit! + 1.0 &&
+        _latestPurity! <= Purity_maxLimit! - 1.0) {
+      // Reset the alarm flag if pressure is back in the safe range
+      purityAlarmTriggered = false;
+
+      _removeString("Purity is Higher than Set Limit");
+      _removeString("Purity is Lower than Set Limit");
     } else {
-      _removeString("Purity is Higher than Limit");
-      _removeString("Purity is Lower than Limit");
+      _removeString("Purity is Higher than Set Limit");
+      _removeString("Purity is Lower than Set Limit");
     }
+    // if (_latestPurity! >= Purity_minLimit! + 1.0 ||
+    //     _latestPurity! <= Purity_maxLimit! - 1.0) {}
 
     if ((_latestFlowRate! > Flow_maxLimit! ||
             _latestFlowRate! < Flow_minLimit!) &&
         printvalue != 111 &&
         printvalue != 112) {
-      double previousFlow = prefs.getDouble("FlowP") ?? -1.0;
-      if (_latestFlowRate != previousFlow) {
+      if (!flowAlarmTriggered) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestFlowRate!),
@@ -466,26 +481,35 @@ class _LineCharWidState extends State<LineCharWid> {
           ));
           prefs.setDouble("FlowP", _latestFlowRate!);
           List<AlarmTableData> storedData = await _db.getAllAlarms();
+          flowAlarmTriggered = true;
           print("Store Alarms: $storedData");
         } catch (e) {
           print("Error to store alarms : $e");
         }
       }
+
       if (_latestFlowRate! > Flow_maxLimit!) {
-        _addString("Flow is Higher than Limit");
+        _addString("Flow is Higher than Set Limit");
       } else {
-        _addString("Flow is Lower than Limit");
+        _addString("Flow is Lower than Set Limit");
       }
+    } else if (_latestFlowRate! >= Flow_minLimit! + 1.0 &&
+        _latestFlowRate! <= Flow_maxLimit! - 1.0) {
+      // Reset the alarm flag if pressure is back in the safe range
+      flowAlarmTriggered = false;
+
+      _removeString("Flow is Higher than Set Limit");
+      _removeString("Flow is Lower than Set Limit");
     } else {
-      _removeString("Flow is Higher than Limit");
-      _removeString("Flow is Lower than Limit");
+      _removeString("Flow is Higher than Set Limit");
+      _removeString("Flow is Lower than Set Limit");
     }
 
     if ((_latestPressure! > Pressure_maxLimit! ||
             _latestPressure! < Pressure_minLimit!) &&
         printvalue != 111) {
-      double previousPressure = prefs.getDouble("PressureP") ?? -1.0;
-      if (_latestPressure != previousPressure) {
+      // Check if the alarm has already been triggered
+      if (!pressureAlarmTriggered) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestPressure!),
@@ -497,25 +521,37 @@ class _LineCharWidState extends State<LineCharWid> {
           ));
           prefs.setDouble("PressureP", _latestPressure!);
           List<AlarmTableData> storedData = await _db.getAllAlarms();
-          print("Store Alarms: $storedData");
+          print("Stored Alarms: $storedData");
+
+          // Set alarm as triggered
+          pressureAlarmTriggered = true;
+          print("print pressurealarmtrigger: $pressureAlarmTriggered");
         } catch (e) {
-          print("Error to store alarms : $e");
+          print("Error to store alarms: $e");
         }
       }
-      if (_latestPressure! > Pressure_maxLimit!) {
-        _addString("Pressure is Higher than Limit");
-      } else {
-        _addString("Pressure is Lower than Limit");
-      }
-    } else {
-      _removeString("Pressure is Higher than Limit");
-      _removeString("Pressure is Lower than Limit");
-    }
 
+      // Check for pressure status
+
+      if (_latestPressure! > Pressure_maxLimit!) {
+        _addString("Pressure is Higher than Set Limit");
+      } else {
+        _addString("Pressure is Lower than Set Limit");
+      }
+    } else if (_latestPressure! >= Pressure_minLimit! + 1.0 &&
+        _latestPressure! <= Pressure_maxLimit! - 1.0) {
+      // Reset the alarm flag if pressure is back in the safe range
+      pressureAlarmTriggered = false;
+
+      _removeString("Pressure is Higher than Set Limit");
+      _removeString("Pressure is Lower than Set Limit");
+    } else {
+      _removeString("Pressure is Higher than Set Limit");
+      _removeString("Pressure is Lower than Set Limit");
+    }
     if (_latestTemperature! > Temp_maxLimit! ||
         _latestTemperature! < Temp_minLimit!) {
-      double previousTemp = prefs.getDouble("TempP") ?? -1.0;
-      if (_latestTemperature != previousTemp) {
+      if (!tempAlarmTriggered) {
         try {
           _db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestTemperature!),
@@ -527,21 +563,44 @@ class _LineCharWidState extends State<LineCharWid> {
           ));
           prefs.setDouble("TempP", _latestTemperature!);
           print("Storing Temperature: $_latestTemperature");
-
+          tempAlarmTriggered = true;
           List<AlarmTableData> storedData = await _db.getAllAlarms();
           print("Store Alarms: $storedData");
         } catch (e) {
           print("Error to store alarms : $e");
         }
       }
+
       if (_latestTemperature! > Temp_maxLimit!) {
-        _addString("Temp is Higher than Limit");
+        _addString("Temperature is Higher than Set Limit");
       } else {
-        _addString("Temp is Lower than Limit");
+        _addString("Temperature is Lower than Set Limit");
+      }
+    } else if (_latestTemperature! >= Temp_minLimit! + 1.0 &&
+        _latestTemperature! <= Temp_maxLimit! - 1.0) {
+      tempAlarmTriggered = false;
+      _removeString("Temperature is Higher than Set Limit");
+      _removeString("Temperature is Lower than Set Limit");
+    } else {
+      _removeString("Temperature is Higher than Set Limit");
+      _removeString("Temperature is Lower than Set Limit");
+    }
+
+    if (_latestPurity! > Purity_maxLimit! ||
+        _latestPurity! < Purity_minLimit! ||
+        _latestFlowRate! > Flow_maxLimit! ||
+        _latestFlowRate! < Flow_minLimit! ||
+        _latestPressure! > Pressure_maxLimit! ||
+        // _latestPressure! < Pressure_minLimit! ||
+        _latestTemperature! > Temp_maxLimit! ||
+        _latestTemperature! < Temp_minLimit!) {
+      if (!isMuted1) {
+        playBackgroundMusic();
+      } else {
+        stopBackgroundMusic();
       }
     } else {
-      _removeString("Temp is Higher than Limit");
-      _removeString("Temp is Lower than Limit");
+      stopBackgroundMusic();
     }
   }
 
@@ -555,7 +614,21 @@ class _LineCharWidState extends State<LineCharWid> {
     } else if (serialNo.startsWith('OP9')) {
       return 999;
     } else {
-      return 10; // Default value if no match
+      return 010; // Default value if no match
+    }
+  }
+
+  double _getLPMYAxisIntervalValue(String serialNo) {
+    if (serialNo.startsWith('OP1')) {
+      return 25;
+    } else if (serialNo.startsWith('OP2')) {
+      return 50;
+    } else if (serialNo.startsWith('OP5')) {
+      return 125;
+    } else if (serialNo.startsWith('OP9')) {
+      return 250;
+    } else {
+      return 2.5; // Default value if no match
     }
   }
 
@@ -580,6 +653,43 @@ class _LineCharWidState extends State<LineCharWid> {
     super.dispose();
   }
 
+  Future<void> loadMuteState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isMuted1 = prefs.getBool('isMuted1') ?? false;
+    });
+  }
+
+  Future<void> saveMuteState(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('isMuted1', value);
+  }
+
+  void playBackgroundMusic() {
+    bgAudio.play(
+      AssetSource('beep.mp3'),
+      volume: isMuted1 ? 0.0 : 1.0,
+    );
+  }
+
+  void stopBackgroundMusic() {
+    print("Stopinng background sound");
+    bgAudio.stop();
+  }
+
+  void toggleMute() {
+    setState(() {
+      isMuted1 = !isMuted1;
+      saveMuteState(isMuted1);
+
+      if (isMuted1) {
+        bgAudio.setVolume(0.0);
+      } else {
+        playBackgroundMusic();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -587,9 +697,9 @@ class _LineCharWidState extends State<LineCharWid> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     final List<Color> parameterColors = [
       const Color.fromARGB(255, 0, 34, 145),
-      Color.fromARGB(255, 204, 148, 7),
+      const Color.fromARGB(255, 204, 148, 7),
       const Color.fromARGB(255, 195, 0, 0),
-      Color.fromARGB(255, 3, 161, 84)
+      const Color.fromARGB(255, 3, 161, 84)
     ];
     final List<Color> parameterTextColor = [
       const Color.fromARGB(255, 255, 255, 255),
@@ -607,7 +717,7 @@ class _LineCharWidState extends State<LineCharWid> {
       "O₂ Purity",
       "Flow",
       "Pressure",
-      "Temp",
+      "Temperature",
     ];
 
     return Scaffold(
@@ -626,7 +736,7 @@ class _LineCharWidState extends State<LineCharWid> {
                     child: Column(
                       children: [
                         Expanded(
-                          flex: 1,
+                          flex: 4,
                           child: Container(
                             //  height: screenHeight * 0.20,
                             child: SfCartesianChart(
@@ -643,13 +753,14 @@ class _LineCharWidState extends State<LineCharWid> {
                                   int seconds = value % 60;
                                   String formattedTime =
                                       '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                  return ChartAxisLabel(formattedTime,
-                                      TextStyle(color: Colors.black));
+                                  return ChartAxisLabel(
+                                      formattedTime, TextStyle(fontSize: 0));
                                 },
                               ),
                               primaryYAxis: const NumericAxis(
                                 minimum: 0,
                                 maximum: 100,
+                                interval: 25,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
                                 title: AxisTitle(text: 'O₂%'),
@@ -675,16 +786,19 @@ class _LineCharWidState extends State<LineCharWid> {
                           ),
                         ),
                         Expanded(
-                          flex: 1,
+                          flex: 4,
                           child: Container(
                             // height: MediaQuery.of(context).size.height * 0.21,
                             child: SfCartesianChart(
                               plotAreaBorderWidth: 0,
+
                               // tooltipBehavior: TooltipBehavior(enable: true),
                               //  legend: Legend(isVisible: true),
                               primaryXAxis: NumericAxis(
                                 interval: 10,
                                 labelFormat: '{value}',
+                                labelStyle:
+                                    TextStyle(color: Colors.transparent),
                                 axisLabelFormatter:
                                     (AxisLabelRenderDetails details) {
                                   int value = details.value.toInt();
@@ -692,17 +806,38 @@ class _LineCharWidState extends State<LineCharWid> {
                                   int seconds = value % 60;
                                   String formattedTime =
                                       '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                  return ChartAxisLabel(formattedTime,
-                                      TextStyle(color: Colors.black));
+                                  return ChartAxisLabel(
+                                      formattedTime,
+                                      TextStyle(
+                                        fontSize: 0,
+                                      ));
                                 },
                               ),
 
                               primaryYAxis: NumericAxis(
                                 maximum: _getLPMYAxisMaxValue(serialNo),
                                 minimum: 0,
+                                interval: _getLPMYAxisIntervalValue(serialNo),
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
                                 title: AxisTitle(text: 'LPM'),
+                                axisLabelFormatter:
+                                    (AxisLabelRenderDetails details) {
+                                  int value = details.value.toInt();
+                                  String formattedValue;
+
+                                  if (value == 0) {
+                                    formattedValue =
+                                        '0'; // Single zero for minimum value
+                                  } else {
+                                    // Format other values to include leading zero
+                                    formattedValue =
+                                        value.toString().padLeft(3, '  ');
+                                  }
+
+                                  return ChartAxisLabel(formattedValue,
+                                      TextStyle(color: Colors.black));
+                                },
                               ),
                               series: <LineSeries<_ChartData, int>>[
                                 LineSeries<_ChartData, int>(
@@ -716,7 +851,7 @@ class _LineCharWidState extends State<LineCharWid> {
                                   yValueMapper: (_ChartData press, _) =>
                                       press.value,
                                   // markerSettings: const MarkerSettings(isVisible: true),
-                                  color: Color.fromARGB(255, 248, 213, 40),
+                                  color: Color.fromARGB(255, 204, 148, 7),
                                   name: "Flow",
                                 ),
                               ],
@@ -724,7 +859,7 @@ class _LineCharWidState extends State<LineCharWid> {
                           ),
                         ),
                         Expanded(
-                          flex: 1,
+                          flex: 4,
                           child: Container(
                             //  height: MediaQuery.of(context).size.height * 0.21,
                             child: SfCartesianChart(
@@ -741,13 +876,14 @@ class _LineCharWidState extends State<LineCharWid> {
                                   int seconds = value % 60;
                                   String formattedTime =
                                       '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                  return ChartAxisLabel(formattedTime,
-                                      TextStyle(color: Colors.black));
+                                  return ChartAxisLabel(
+                                      formattedTime, TextStyle(fontSize: 0));
                                 },
                               ),
                               primaryYAxis: NumericAxis(
                                 maximum: serialNo.startsWith('ODC') ? 20 : 100,
                                 minimum: 0,
+                                interval: serialNo.startsWith('ODC') ? 5 : 25,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
                                 title: AxisTitle(text: 'PSI'),
@@ -773,7 +909,7 @@ class _LineCharWidState extends State<LineCharWid> {
                           ),
                         ),
                         Expanded(
-                          flex: 1,
+                          flex: 5,
                           child: Container(
                               // height: MediaQuery.of(context).size.height * 0.21,
                               child: SfCartesianChart(
@@ -794,13 +930,31 @@ class _LineCharWidState extends State<LineCharWid> {
                                     TextStyle(color: Colors.black));
                               },
                             ),
-                            primaryYAxis: const NumericAxis(
+                            primaryYAxis: NumericAxis(
                               maximum: 50,
-                              interval: 25,
+                              interval: 12.5,
                               minimum: 0,
                               axisLine: AxisLine(width: 0),
                               majorTickLines: MajorTickLines(size: 0),
                               title: AxisTitle(text: '°C'),
+                              labelFormat: '{value}', // Default label format
+                              axisLabelFormatter:
+                                  (AxisLabelRenderDetails details) {
+                                int value = details.value.toInt();
+                                String formattedValue;
+
+                                if (value == 0) {
+                                  formattedValue =
+                                      '0'; // Single zero for minimum value
+                                } else {
+                                  // Format other values to include leading zero
+                                  formattedValue =
+                                      value.toString().padLeft(3, '  ');
+                                }
+
+                                return ChartAxisLabel(formattedValue,
+                                    TextStyle(color: Colors.black));
+                              },
                             ),
                             series: <LineSeries<_ChartData, int>>[
                               LineSeries<_ChartData, int>(
@@ -1016,8 +1170,11 @@ class _LineCharWidState extends State<LineCharWid> {
                                                     printvalue == 111)
                                                 ? "---"
                                                 : _latestFlowRate != null
-                                                    ? _latestFlowRate!
-                                                        .toStringAsFixed(1)
+                                                    ? _latestFlowRate! >= 100
+                                                        ? _latestFlowRate!
+                                                            .toStringAsFixed(0)
+                                                        : _latestFlowRate!
+                                                            .toStringAsFixed(1)
                                                     : "0.0"),
                                             style: TextStyle(
                                               color: parameterTextColor[0],
@@ -1157,12 +1314,43 @@ class _LineCharWidState extends State<LineCharWid> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 12.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(6), // Square corners
+                        ),
+                        minimumSize: Size(
+                            100, 25), // Set minimum size to maintain height
+                        backgroundColor: // Color when muted
+                            Colors.blue, // Default color
+                      ),
+                      onPressed: toggleMute,
+                      child: Text(
+                        isMuted1 ? 'Unmute' : 'Mute',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.white, // Default text color
+                          shadows: [
+                            Shadow(
+                              blurRadius: 4,
+                              color: Colors.blueAccent,
+                              offset: Offset(2, 1.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Spacer(), // Spacer to push the text to the center
                     Text(
                       _currentString,
                       style: TextStyle(
-                          fontSize: screenHeight / 23,
-                          fontWeight: FontWeight.bold),
+                        fontSize: screenHeight / 23,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    Spacer(), // Spacer to keep the text centered
                   ],
                 ),
               ),
@@ -1229,6 +1417,46 @@ class _LineCharWidState extends State<LineCharWid> {
           double temperature =
               double.tryParse(jsonData['Temperature'] ?? '0.0')!;
           _serialNo = jsonData['serialNo'] ?? '';
+
+          if (purity > 99.9) {
+            purity = 99.9;
+          }
+          if (_serialNo!.startsWith("ODC")) {
+            if (pressure > 20.0) {
+              pressure = 20.0;
+            }
+          } else {
+            if (pressure >= 100) {
+              pressure = 99.9;
+            }
+          }
+          if (_serialNo!.startsWith("OP1")) {
+            if (flowRate > 100) {
+              flowRate = 100.0;
+            }
+          } else if (_serialNo!.startsWith("OP2")) {
+            if (flowRate > 100) {
+              flowRate = 100.0;
+            }
+            if (flowRate > 200) {
+              flowRate = 200.0;
+            }
+          } else if (_serialNo!.startsWith("OP5")) {
+            if (flowRate > 500.0) {
+              flowRate = 500;
+            }
+          } else if (_serialNo!.startsWith("OP9")) {
+            if (flowRate > 999) {
+              flowRate = 999;
+            }
+          } else {
+            if (flowRate > 10) {
+              flowRate = 10.0;
+            }
+          }
+          if (temperature > 99.9) {
+            temperature = 99.9;
+          }
 
           purityList.add(purity);
           flowRateList.add(flowRate);

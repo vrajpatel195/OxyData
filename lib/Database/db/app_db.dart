@@ -317,9 +317,9 @@ class AppDb extends _$AppDb {
         .go();
 
     // Delete data older than 3 months from AlarmTable
-    // await (delete(alarmTable)
-    //       ..where((tbl) => tbl.recordedAt.isSmallerThanValue(threeMonthsAgo)))
-    //     .go();
+    await (delete(alarmTable)
+          ..where((tbl) => tbl.recordedAt.isSmallerThanValue(threeMonthsAgo)))
+        .go();
 
     print("Data older than 3 months has been deleted from all tables.");
   }

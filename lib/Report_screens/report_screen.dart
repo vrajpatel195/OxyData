@@ -124,7 +124,7 @@ class _ReportScreenState extends State<ReportScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Center(
-          child: Text("Report"),
+          child: Text("OxyData Report"),
         ),
         toolbarHeight: 40,
         backgroundColor: Color.fromARGB(141, 241, 241, 241),

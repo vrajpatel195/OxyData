@@ -4,8 +4,10 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -162,18 +164,35 @@ class GraphReportState extends State<GraphReport> {
     final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
         appBar: AppBar(
-          title: Text('Chart Screen'),
+          title: Text('Current Report OxyData'),
           actions: [
             _isLoading
                 ? CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: () {
-                      _generatePdfAfterRender();
-                    },
-                    child: Text("Report"),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
+                : Padding(
+                    padding: const EdgeInsets.only(right: 20),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _generatePdfAfterRender();
+                      },
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.picture_as_pdf, size: 20),
+                          SizedBox(width: 10),
+                          Text(
+                            'Report',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.blue, // Text color
+                        shadowColor: Colors.blueAccent, // Shadow color
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
                       ),
                     ),
                   ),
@@ -190,6 +209,14 @@ class GraphReportState extends State<GraphReport> {
                   height: screenHeight * 0.80,
                   width: screenWidth * 0.80,
                   child: SfCartesianChart(
+                    zoomPanBehavior: ZoomPanBehavior(
+                      enablePinching: true, // Enables pinch-to-zoom
+                      enablePanning: true, // Enables dragging to pan
+                      zoomMode: ZoomMode
+                          .x, // Enables zooming in both X and Y directions
+                      enableDoubleTapZooming:
+                          true, // Enables double-tap zooming
+                    ),
                     primaryYAxis: const NumericAxis(
                       name: 'primaryYAxis1',
                       minimum: 0,
@@ -211,7 +238,7 @@ class GraphReportState extends State<GraphReport> {
                     primaryXAxis: DateTimeAxis(
                       minimum: _minimumTime,
                       maximum: _maximumTime,
-                      intervalType: DateTimeIntervalType.minutes,
+                      intervalType: DateTimeIntervalType.auto,
                       edgeLabelPlacement: EdgeLabelPlacement.shift,
                       dateFormat: DateFormat('hh:mm'),
                       labelStyle: TextStyle(

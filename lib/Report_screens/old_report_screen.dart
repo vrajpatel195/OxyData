@@ -112,7 +112,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Center(
-          child: Text("Report  ${widget.serialNo}"),
+          child: Text("OxyData Report  ${widget.serialNo}"),
         ),
         toolbarHeight: 40,
         backgroundColor: Color.fromARGB(141, 241, 241, 241),
@@ -269,7 +269,7 @@ class _OldReportScreenState extends State<OldReportScreen> {
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton(
-                              child: const  Text('Submit'),
+                              child: const Text('Submit'),
                               onPressed: () {
                                 Navigator.of(context).pop(reportType);
                               },
