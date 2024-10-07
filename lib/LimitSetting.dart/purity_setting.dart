@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../Database/db/app_db.dart';
+import '../Services/mqtt_connect.dart';
 import 'api_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,7 +13,9 @@ import 'package:drift/drift.dart' as drift;
 class PuritySetting extends StatefulWidget {
   final double min;
   final double max;
-  PuritySetting({required this.min, required this.max});
+  final int isInternet;
+  PuritySetting(
+      {required this.min, required this.max, required this.isInternet});
   @override
   _PuritySettingState createState() => _PuritySettingState();
 }
@@ -38,31 +41,34 @@ class _PuritySettingState extends State<PuritySetting> {
   }
 
   Future<void> _saveToSharedPreferences() async {
-    final _db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
 
     double max = double.parse(puritymax.toStringAsFixed(1));
     double min = double.parse(puritymin.toStringAsFixed(1));
     print("sdjhgvdsfgvjdh: $max");
-    DateTime dateTime = DateTime.now();
 
     prefs.setDouble('purityMax', max);
     prefs.setDouble('purityMin', min);
     serialNo = prefs.getString('serialNo') ?? "";
-    try {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
-        limit_max: drift.Value(max),
-        limit_min: drift.Value(min),
-        type: drift.Value("Purity"),
-        serialNo: drift.Value(serialNo!),
-        recordedAt: drift.Value(dateTime),
-      ));
-    } catch (e) {
-      print("error in purity data--> $e");
-    }
 
-    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-    print("Storedddd data =>   $storedData");
+    if (widget.isInternet == 3) {
+      final _db = await AppDbSingleton().database;
+      DateTime dateTime = DateTime.now();
+      try {
+        await _db.insertLimitSetting(LimitSettingsTableCompanion(
+          limit_max: drift.Value(max),
+          limit_min: drift.Value(min),
+          type: drift.Value("Purity"),
+          serialNo: drift.Value(serialNo!),
+          recordedAt: drift.Value(dateTime),
+        ));
+      } catch (e) {
+        print("error in purity data--> $e");
+      }
+
+      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+      print("Storedddd data =>   $storedData");
+    }
   }
 
   @override
@@ -221,9 +227,18 @@ class _PuritySettingState extends State<PuritySetting> {
                                   setState(() {
                                     _isLoading = true;
                                   });
+                                  if (widget.isInternet == 3) {
+                                    await postStoredData();
+                                  } else {
+                                    await MqttService().publishPuritySettings();
+                                  }
 
-                                  await postStoredData();
                                   Navigator.pop(context, 1);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            'Purity Limit Set successfully')),
+                                  );
                                 } catch (e) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:oxydata/Demo/demo_report_screen.dart';
@@ -9,9 +11,12 @@ import 'LimitSettingDemo/Temp_demo.dart';
 import 'LimitSettingDemo/flow_demo.dart';
 import 'LimitSettingDemo/pressure_demo.dart';
 import 'LimitSettingDemo/purity_demo.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class DemoWid extends StatefulWidget {
-  const DemoWid({Key? key}) : super(key: key);
+  DemoWid({Key? key, required this.version}) : super(key: key);
+  String version;
 
   @override
   State<DemoWid> createState() => _DemoWidState();
@@ -42,6 +47,8 @@ class _DemoWidState extends State<DemoWid> {
   Set<String> _uniqueStrings = {};
   List<String> _uniqueStringList = [];
   List<Map<String, dynamic>> _cache = [];
+
+  final AudioPlayer bgAudio = AudioPlayer();
 
   // final StreamController<List<ChartData>> _streamController =
   //     StreamController<List<ChartData>>.broadcast();
@@ -108,19 +115,22 @@ class _DemoWidState extends State<DemoWid> {
     super.initState();
     _storeData();
     _initialData();
+
     _updateController = StreamController<void>.broadcast();
 
     _streamSubscription = _updateController.stream.listen((_) {
       _updateString();
     });
-    if (_isRunning) return;
-    Timer.periodic(Duration(seconds: 1), (timer) async {
-      await getData();
-      _updateController.add(null);
-      time++;
-      _updateCurrentString();
-    });
-    _isRunning = true;
+
+    if (!_isRunning) {
+      Timer.periodic(Duration(seconds: 1), (timer) async {
+        time++; // Increment time first
+        await getData();
+        _updateController.add(null);
+        _updateCurrentString();
+      });
+      _isRunning = true;
+    }
 
     _puritySubscription = _purityController.stream.listen((data) {
       setState(() {
@@ -128,9 +138,9 @@ class _DemoWidState extends State<DemoWid> {
         if (_purityData.length > 61) _purityData.removeAt(0);
         _latestPurity = data;
       });
-
       _updateDataSource();
     });
+
     _flowRateSubscription = _flowRateController.stream.listen((data) {
       setState(() {
         _flowRateData.add(_ChartData(time, data));
@@ -139,6 +149,7 @@ class _DemoWidState extends State<DemoWid> {
       });
       _updateDataSource();
     });
+
     _pressureSubscription = _pressureController.stream.listen((data) {
       setState(() {
         _pressureData.add(_ChartData(time, data));
@@ -147,6 +158,7 @@ class _DemoWidState extends State<DemoWid> {
       });
       _updateDataSource();
     });
+
     _temperatureSubscription = _temperatureController.stream.listen((data) {
       setState(() {
         _temperatureData.add(_ChartData(time, data));
@@ -171,19 +183,20 @@ class _DemoWidState extends State<DemoWid> {
   void _updateDataSource() {
     _purityChartController?.updateDataSource(
       addedDataIndex: _purityData.length - 1,
-      removedDataIndex: _purityData.length > 1 ? 0 : -1,
+      removedDataIndex:
+          _purityData.length > 61 ? 0 : -1, // Null indicates no removal
     );
     _flowRateChartController?.updateDataSource(
       addedDataIndex: _flowRateData.length - 1,
-      removedDataIndex: _flowRateData.length > 1 ? 0 : -1,
+      removedDataIndex: _flowRateData.length > 61 ? 0 : -1,
     );
     _pressureChartController?.updateDataSource(
       addedDataIndex: _pressureData.length - 1,
-      removedDataIndex: _pressureData.length > 1 ? 0 : -1,
+      removedDataIndex: _pressureData.length > 61 ? 0 : -1,
     );
     _temperatureChartController?.updateDataSource(
       addedDataIndex: _temperatureData.length - 1,
-      removedDataIndex: _temperatureData.length > 1 ? 0 : -1,
+      removedDataIndex: _temperatureData.length > 61 ? 0 : -1,
     );
   }
 
@@ -191,14 +204,14 @@ class _DemoWidState extends State<DemoWid> {
     final prefs = await SharedPreferences.getInstance();
     try {
       setState(() {
-        Purity_maxLimit = prefs.getDouble('Purity_maxLimit') ?? 0;
-        Purity_minLimit = prefs.getDouble('Purity_minLimit') ?? 0;
-        Flow_maxLimit = prefs.getDouble('Flow_maxLimit') ?? 0;
-        Flow_minLimit = prefs.getDouble('Flow_minLimit') ?? 0;
-        Pressure_maxLimit = prefs.getDouble('Pressure_maxLimit') ?? 0;
+        Purity_maxLimit = prefs.getDouble('Purity_maxLimit') ?? 90;
+        Purity_minLimit = prefs.getDouble('Purity_minLimit') ?? 80;
+        Flow_maxLimit = prefs.getDouble('Flow_maxLimit') ?? 20;
+        Flow_minLimit = prefs.getDouble('Flow_minLimit') ?? 10;
+        Pressure_maxLimit = prefs.getDouble('Pressure_maxLimit') ?? 20;
         Pressure_minLimit = prefs.getDouble('Pressure_minLimit') ?? 0;
-        Temp_maxLimit = prefs.getDouble('Temp_maxLimit') ?? 0;
-        Temp_minLimit = prefs.getDouble('Temp_minLimit') ?? 0;
+        Temp_maxLimit = prefs.getDouble('Temp_maxLimit') ?? 40;
+        Temp_minLimit = prefs.getDouble('Temp_minLimit') ?? 30;
       });
       _updateString();
     } catch (e) {
@@ -286,6 +299,60 @@ class _DemoWidState extends State<DemoWid> {
       _removeString("Temp is Higher than Limit.");
       _removeString("Temp is Lower than Limit.");
     }
+
+    if (_latestPurity > Purity_maxLimit! ||
+        _latestPurity < Purity_minLimit! ||
+        _latestFlowRate > Flow_maxLimit! ||
+        _latestFlowRate < Flow_minLimit! ||
+        _latestPressure > Pressure_maxLimit! ||
+        _latestPressure < Pressure_minLimit! ||
+        _latestTemperature > Temp_maxLimit! ||
+        _latestTemperature < Temp_minLimit!) {
+      if (!isMuted1) {
+        playBackgroundMusic();
+      } else {
+        stopBackgroundMusic();
+      }
+    } else {
+      stopBackgroundMusic();
+    }
+  }
+
+  Future<void> loadMuteState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isMuted1 = prefs.getBool('demoisMuted1') ?? false;
+    });
+  }
+
+  Future<void> saveMuteState(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('demoisMuted1', value);
+  }
+
+  void playBackgroundMusic() {
+    bgAudio.play(
+      AssetSource('beep.mp3'),
+      volume: isMuted1 ? 0.0 : 1.0,
+    );
+  }
+
+  void stopBackgroundMusic() {
+    print("Stopinng background sound");
+    bgAudio.stop();
+  }
+
+  void toggleMute() {
+    setState(() {
+      isMuted1 = !isMuted1;
+      saveMuteState(isMuted1);
+
+      if (isMuted1) {
+        bgAudio.setVolume(0.0);
+      } else {
+        playBackgroundMusic();
+      }
+    });
   }
 
   @override
@@ -406,7 +473,7 @@ class _DemoWidState extends State<DemoWid> {
                       Column(
                         children: [
                           Expanded(
-                            flex: 1,
+                            flex: 3,
                             child: Container(
                               //  height: screenHeight * 0.20,
                               child: SfCartesianChart(
@@ -423,8 +490,10 @@ class _DemoWidState extends State<DemoWid> {
                                     int seconds = value % 60;
                                     String formattedTime =
                                         '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                    return ChartAxisLabel(formattedTime,
-                                        TextStyle(color: Colors.black));
+                                    return ChartAxisLabel(
+                                        formattedTime,
+                                        TextStyle(
+                                            color: Colors.white, fontSize: 0));
                                   },
                                 ),
                                 primaryYAxis: const NumericAxis(
@@ -432,6 +501,7 @@ class _DemoWidState extends State<DemoWid> {
                                   majorTickLines: MajorTickLines(size: 0),
                                   title: AxisTitle(text: 'O₂%'),
                                   minimum: 70,
+                                  interval: 5,
                                   maximum: 90,
                                 ),
                                 series: <LineSeries<_ChartData, int>>[
@@ -456,7 +526,7 @@ class _DemoWidState extends State<DemoWid> {
                             ),
                           ),
                           Expanded(
-                            flex: 1,
+                            flex: 3,
                             child: Container(
                               // height: MediaQuery.of(context).size.height * 0.21,
                               child: SfCartesianChart(
@@ -473,13 +543,15 @@ class _DemoWidState extends State<DemoWid> {
                                     int seconds = value % 60;
                                     String formattedTime =
                                         '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                    return ChartAxisLabel(formattedTime,
-                                        TextStyle(color: Colors.black));
+                                    return ChartAxisLabel(
+                                        formattedTime,
+                                        TextStyle(
+                                            color: Colors.white, fontSize: 0));
                                   },
                                 ),
                                 primaryYAxis: const NumericAxis(
                                   maximum: 40,
-                                  interval: 20,
+                                  interval: 10,
                                   minimum: 0,
                                   axisLine: AxisLine(width: 0),
                                   majorTickLines: MajorTickLines(size: 0),
@@ -505,7 +577,7 @@ class _DemoWidState extends State<DemoWid> {
                             ),
                           ),
                           Expanded(
-                            flex: 1,
+                            flex: 3,
                             child: Container(
                               //  height: MediaQuery.of(context).size.height * 0.21,
                               child: SfCartesianChart(
@@ -522,13 +594,15 @@ class _DemoWidState extends State<DemoWid> {
                                     int seconds = value % 60;
                                     String formattedTime =
                                         '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                    return ChartAxisLabel(formattedTime,
-                                        TextStyle(color: Colors.black));
+                                    return ChartAxisLabel(
+                                        formattedTime,
+                                        TextStyle(
+                                            color: Colors.white, fontSize: 0));
                                   },
                                 ),
                                 primaryYAxis: const NumericAxis(
                                   maximum: 40,
-                                  interval: 20,
+                                  interval: 10,
                                   minimum: 0,
                                   axisLine: AxisLine(width: 0),
                                   majorTickLines: MajorTickLines(size: 0),
@@ -555,7 +629,7 @@ class _DemoWidState extends State<DemoWid> {
                             ),
                           ),
                           Expanded(
-                            flex: 1,
+                            flex: 4,
                             child: Container(
                                 // height: MediaQuery.of(context).size.height * 0.21,
                                 child: SfCartesianChart(
@@ -572,14 +646,17 @@ class _DemoWidState extends State<DemoWid> {
                                   int seconds = value % 60;
                                   String formattedTime =
                                       '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                                  return ChartAxisLabel(formattedTime,
-                                      TextStyle(color: Colors.black));
+                                  return ChartAxisLabel(
+                                      formattedTime,
+                                      TextStyle(
+                                        color: Colors.black,
+                                      ));
                                 },
                               ),
                               primaryYAxis: const NumericAxis(
                                 maximum: 50,
-                                interval: 25,
                                 minimum: 0,
+                                interval: 25,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
                                 title: AxisTitle(text: '°C'),
@@ -716,7 +793,197 @@ class _DemoWidState extends State<DemoWid> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () async {},
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                "Company Info",
+                                                style: TextStyle(fontSize: 20),
+                                              ),
+                                              IconButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                  },
+                                                  icon: Icon(Icons.close))
+                                            ]),
+                                        Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Image.asset('assets/oxy_logo.png',
+                                                  width: 70, height: 70),
+                                              SizedBox(
+                                                width: 10,
+                                              ),
+                                              Text(
+                                                "From",
+                                                style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                              ),
+                                              SizedBox(
+                                                width: 10,
+                                              ),
+                                              Image.asset(
+                                                  'assets/wave_logo.png',
+                                                  width: 70,
+                                                  height: 70),
+                                            ]),
+                                        Text(
+                                          "Company: Wave Visions, Vadodara, India",
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        RichText(
+                                          text: TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: "Company Profile: ",
+                                                style: TextStyle(
+                                                  color: Colors
+                                                      .black, // Black color for "Company Profile:"
+                                                  fontSize:
+                                                      16, // Adjust font size as needed
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: "www.wavevisions.in",
+                                                style: TextStyle(
+                                                  color: Colors
+                                                      .blue, // Blue color for the link
+                                                  decoration: TextDecoration
+                                                      .underline, // Underlined link
+                                                  fontSize:
+                                                      16, // Adjust font size as needed
+                                                ),
+                                                recognizer:
+                                                    TapGestureRecognizer()
+                                                      ..onTap = () async {
+                                                        const url =
+                                                            'https://wavevisions.in/';
+                                                        if (await canLaunch(
+                                                            url)) {
+                                                          await launch(url);
+                                                        } else {
+                                                          throw 'Could not launch $url';
+                                                        }
+                                                      },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        RichText(
+                                          text: TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: "Company Email: ",
+                                                style: TextStyle(
+                                                  color: Colors
+                                                      .black, // Black color for "Company Email:"
+                                                  fontSize:
+                                                      16, // Adjust font size as needed
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: "wavevisions@gmail.com",
+                                                style: TextStyle(
+                                                  color: Colors
+                                                      .blue, // Blue color for the email link
+                                                  decoration: TextDecoration
+                                                      .underline, // Underlined link
+                                                  fontSize:
+                                                      16, // Adjust font size as needed
+                                                ),
+                                                recognizer:
+                                                    TapGestureRecognizer()
+                                                      ..onTap = () async {
+                                                        final Uri
+                                                            emailLaunchUri =
+                                                            Uri(
+                                                          scheme: 'mailto',
+                                                          path:
+                                                              'wavevisions@gmail.com',
+                                                          query:
+                                                              'subject=Company%20Inquiry',
+                                                        );
+                                                        if (await canLaunchUrl(
+                                                            emailLaunchUri)) {
+                                                          await launchUrl(
+                                                              emailLaunchUri);
+                                                        } else {
+                                                          throw 'Could not launch email';
+                                                        }
+                                                      },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        RichText(
+                                          text: TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: "Phone No.: ",
+                                                style: TextStyle(
+                                                  color: Colors
+                                                      .black, // Black color for "Phone No.:"
+                                                  fontSize:
+                                                      16, // Adjust font size as needed
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: "+91-265-2324681",
+                                                style: TextStyle(
+                                                  color: Colors
+                                                      .blue, // Blue color for the phone link
+                                                  decoration: TextDecoration
+                                                      .underline, // Underlined link
+                                                  fontSize:
+                                                      16, // Adjust font size as needed
+                                                ),
+                                                recognizer:
+                                                    TapGestureRecognizer()
+                                                      ..onTap = () async {
+                                                        const tel =
+                                                            'tel:+91-265-2324681';
+                                                        if (await canLaunchUrl(
+                                                            Uri.parse(tel))) {
+                                                          await launchUrl(
+                                                              Uri.parse(tel),
+                                                              mode: LaunchMode
+                                                                  .externalApplication);
+                                                        } else {
+                                                          throw 'Could not launch $tel';
+                                                        }
+                                                      },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          "version: ${widget.version}",
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                             child: Container(
                               height:
                                   MediaQuery.of(context).size.height * 0.145,
@@ -730,7 +997,7 @@ class _DemoWidState extends State<DemoWid> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        "Setting",
+                                        "Sr No",
                                         style: TextStyle(
                                           color: parameterTextColor[2],
                                           fontSize: 20,
@@ -880,7 +1147,7 @@ class _DemoWidState extends State<DemoWid> {
                                         "Report",
                                         style: TextStyle(
                                           color: parameterTextColor[3],
-                                          fontSize: 20,
+                                          fontSize: screenHeight / 22,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -907,12 +1174,43 @@ class _DemoWidState extends State<DemoWid> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 12.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(6), // Square corners
+                        ),
+                        minimumSize: Size(
+                            100, 25), // Set minimum size to maintain height
+                        backgroundColor: // Color when muted
+                            Colors.blue, // Default color
+                      ),
+                      onPressed: toggleMute,
+                      child: Text(
+                        isMuted1 ? 'Unmute' : 'Mute',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.white, // Default text color
+                          shadows: [
+                            Shadow(
+                              blurRadius: 4,
+                              color: Colors.blueAccent,
+                              offset: Offset(2, 1.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Spacer(), // Spacer to push the text to the center
                     Text(
                       _currentString,
                       style: TextStyle(
-                          fontSize: screenHeight / 23,
-                          fontWeight: FontWeight.bold),
+                        fontSize: screenHeight / 23,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    Spacer(), // Spacer to keep the text centered
                   ],
                 ),
               ),
@@ -955,6 +1253,7 @@ class _DemoWidState extends State<DemoWid> {
   double _latestFlowRate = 0.0;
   double _latestPressure = 0.0;
   double _latestTemperature = 0.0;
+  bool isMuted1 = true;
 
   bool _isRunning = false;
 

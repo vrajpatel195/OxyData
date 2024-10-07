@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
@@ -12,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:open_file/open_file.dart';
@@ -432,6 +434,13 @@ class GraphReportState extends State<GraphReport> {
 
   Future<void> generateReportPdf(Uint8List chartImage, MinMaxData data) async {
     final pdf = pw.Document();
+    int androidVersion = 0;
+    int sdkVersion1 = 0;
+    String versionRelease = "";
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+
+    sdkVersion1 = androidInfo.version.sdkInt;
 
     final titleStyle = pw.TextStyle(
       fontSize: 16,
@@ -454,9 +463,11 @@ class GraphReportState extends State<GraphReport> {
       'Alarms',
       'Type'
     ];
+    final DateFormat formatter = DateFormat('dd-MM-yyyy HH:mm:ss');
     final dataAlarmsRow = _dataAlarms.map((data) {
+      final timestamp = DateTime.parse(data['timestamp'].toString());
       return [
-        data['timestamp'].toString(), // DateTime
+        formatter.format(timestamp), // DateTime
         data['limitmax'].toString(), // Limit Max
         data['limitmin'].toString(), // Limit Min
         data['Alarms'].toString(),
@@ -583,12 +594,18 @@ class GraphReportState extends State<GraphReport> {
                         '$_maxPressure',
                         '${_avgPressure.toStringAsFixed(2)}'
                       ],
-                      [
-                        'Gas Flow   (LPM)',
-                        '$_minFlow',
-                        '$_maxFlow',
-                        '${_avgFlow.toStringAsFixed(2)}'
-                      ],
+                      data.serialNo.startsWith("OD2") ||
+                              data.serialNo.startsWith("OP1") ||
+                              data.serialNo.startsWith("ODC") ||
+                              data.serialNo.startsWith("OD5") ||
+                              data.serialNo.startsWith("OD9")
+                          ? [
+                              'Gas Flow   (LPM)',
+                              '$_minFlow',
+                              '$_maxFlow',
+                              '${_avgFlow.toStringAsFixed(2)}'
+                            ]
+                          : [],
                       [
                         'Gas Temperature  (°C)',
                         '$_minTemperature',
@@ -685,8 +702,13 @@ class GraphReportState extends State<GraphReport> {
                                   'Oxygen Purity (%)', data.o2Min, data.o2Max),
                               createTableRow('Gas Pressure (PSI)',
                                   data.pressureMin, data.pressureMax),
-                              createTableRow(
-                                  'Gas Flow (LPM)', data.flowMin, data.flowMax),
+                              if (data.serialNo.startsWith("OD2") ||
+                                  data.serialNo.startsWith("OP1") ||
+                                  data.serialNo.startsWith("ODC") ||
+                                  data.serialNo.startsWith("OD5") ||
+                                  data.serialNo.startsWith("OD9"))
+                                createTableRow('Gas Flow (LPM)', data.flowMin,
+                                    data.flowMax),
                               createTableRow('Gas Temperature (°C)',
                                   data.temperatureMin, data.temperatureMax),
                             ],
@@ -826,9 +848,9 @@ class GraphReportState extends State<GraphReport> {
                       height: 3), // Space between the title and the table
                 ],
                 pw.Table.fromTextArray(
-                  headers: alarmHeaders,
-                  data: pageRows,
-                ),
+                    headers: alarmHeaders,
+                    data: pageRows,
+                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                 pw.Divider(),
                 pw.SizedBox(height: 5),
                 pw.Text("Remark:", style: regularStyle),
@@ -848,35 +870,77 @@ class GraphReportState extends State<GraphReport> {
         },
       ),
     );
-    try {
-      final documentsDir =
-          Directory('/storage/emulated/0/Download/OxyData/Current');
-      final documentsDirectory = await getExternalStorageDirectory();
 
-      if (!documentsDir.existsSync()) {
-        documentsDir.createSync(recursive: true);
+    if (sdkVersion1 <= 29) {
+      if (await _requestStoragePermission()) {
+        final directory =
+            Directory('/storage/emulated/0/Download/OxyData/Current');
+        if (!directory.existsSync()) {
+          directory.createSync(recursive: true);
+        }
+
+        String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final filePath = '${directory.path}/Report_Current _$timestamp.pdf';
+        final file = File(filePath);
+
+        final pdfBytes =
+            await pdf.save(); // Assuming you have the pdf data ready
+        await file.writeAsBytes(pdfBytes);
+
+        OpenFile.open(filePath);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF saved to Downloads: $filePath')),
+        );
+      } else {
+        final pdfBytes = await pdf.save();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Permission denied. Report generated but not saved.')),
+        );
       }
+    } else {
+      try {
+        final documentsDir =
+            Directory('/storage/emulated/0/Download/OxyData/Current');
+        final documentsDirectory = await getExternalStorageDirectory();
 
-      String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final filePath = '${documentsDir.path}/Report_Current _$timestamp.pdf';
-      final filepathopen =
-          '${documentsDirectory?.path}/ReportCurrent _$timestamp.pdf';
+        if (!documentsDir.existsSync()) {
+          documentsDir.createSync(recursive: true);
+        }
+        String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final filePath = '${documentsDir.path}/Report_Current _$timestamp.pdf';
+        final filepathopen =
+            '${documentsDirectory?.path}/ReportCurrent _$timestamp.pdf';
 
-      final file = File(filePath);
-      final fileopen = File(filepathopen);
+        final file = File(filePath);
+        final fileopen = File(filepathopen);
 
-      final pdfBytes = await pdf.save();
-      await file.writeAsBytes(pdfBytes);
-      await fileopen.writeAsBytes(pdfBytes);
+        final pdfBytes = await pdf.save();
+        await file.writeAsBytes(pdfBytes);
+        await fileopen.writeAsBytes(pdfBytes);
 
-      final result = await OpenFile.open(filepathopen);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF saved to $filepathopen')),
-      );
-      print("File Path: $filePath");
-      print("Open File Result: ${result.message}");
-    } catch (e) {
-      print("Failed to save or open file: $e");
+        final result = await OpenFile.open(filepathopen);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF saved to $filepathopen')),
+        );
+        print("File Path: $filePath");
+        print("Open File Result: ${result.message}");
+      } catch (e) {
+        print("Failed to save or open file: $e");
+      }
     }
+  }
+
+  Future<bool> _requestStoragePermission() async {
+    PermissionStatus status = await Permission.storage.status;
+
+    if (status.isDenied || status.isPermanentlyDenied) {
+      status = await Permission.storage.request();
+    }
+
+    return status.isGranted;
   }
 }

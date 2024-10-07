@@ -29,12 +29,15 @@ import '../LimitSetting.dart/api_service.dart';
 import '../LimitSetting.dart/min_max_data.dart';
 
 import '../LimitSetting.dart/purity_setting.dart';
+import '../Services/mqtt_connect.dart';
 import '../widgets/editDetailsDialog.dart';
 
 class LineCharWid extends StatefulWidget {
   // ignore: use_super_parameters
-  const LineCharWid({Key? key}) : super(key: key);
-
+  LineCharWid({Key? key, required this.isInternet, this.mqttService})
+      : super(key: key);
+  int isInternet;
+  final MqttService? mqttService;
   @override
   State<LineCharWid> createState() => _LineCharWidState();
 
@@ -67,6 +70,12 @@ class _LineCharWidState extends State<LineCharWid> {
   List<String> _uniqueStringList = [];
   final AudioPlayer bgAudio = AudioPlayer();
 
+  late MqttService mqttService;
+  int internet = 1;
+  double _maxYAxisValue = 10; // Default value
+  double _intervalYAxisValue = 2.5; // Default value
+  String mqttPayload = " ";
+
   // final StreamController<List<ChartData>> _streamController =
   //     StreamController<List<ChartData>>.broadcast();
 
@@ -88,6 +97,7 @@ class _LineCharWidState extends State<LineCharWid> {
 
   void _navigateToDetailPage(int index) async {
     if (index == 0) {
+      print("dscsiudcsujhgbvcs : $mqttPayload");
       var minMax = await setMinMax("O2");
       if (minMax != null) {
         final result = await Navigator.push(
@@ -96,6 +106,7 @@ class _LineCharWidState extends State<LineCharWid> {
             builder: (context) => PuritySetting(
               max: minMax.item1,
               min: minMax.item2,
+              isInternet: widget.isInternet,
             ),
           ),
         );
@@ -174,26 +185,40 @@ class _LineCharWidState extends State<LineCharWid> {
   void initState() {
     super.initState();
     appStartTime = DateTime.now();
-    _saveLimits();
+    if (widget.isInternet == 3) _saveLimits();
     _initialData();
     loadMuteState();
+    if (widget.isInternet == 2) {
+      mqttService = widget.mqttService!;
+      //mqttService.connect(); // Connect to MQTT
 
-    _updateController = StreamController<void>.broadcast();
+      // Listen to incoming messages
+      mqttService.messageStream.listen((message) {
+        mqttPayload = message;
+        getMqttdata(message);
+      });
+    }
+
+    // _updateController = StreamController<void>.broadcast();
 
     if (_isRunning) return;
     Timer.periodic(const Duration(seconds: 1), (timer) async {
-      await _saveLimits();
-      await getData();
+      if (widget.isInternet == 3) {
+        await _saveLimits();
+        await getData();
+      }
 
-      _updateController.add(null);
+      //_updateController.add(null);
       time++;
       _updateCurrentString();
     });
     _isRunning = true;
-
-    Timer.periodic(const Duration(minutes: 1), (timer) {
-      storeAverageData();
-    });
+    if (widget.isInternet == 3) {
+      Timer.periodic(const Duration(minutes: 1), (timer) {
+        storeAverageData();
+      });
+    }
+    _getLPMValuesWithDelay(serialNo);
 
     _puritySubscription = _purityController.stream.listen((data) {
       setState(() {
@@ -231,14 +256,15 @@ class _LineCharWidState extends State<LineCharWid> {
 
       _updateDataSource();
     });
-    _streamSubscription = _updateController.stream.listen((_) {
-      if (_latestPurity != null &&
-          _latestFlowRate != null &&
-          _latestPressure != null &&
-          _latestTemperature != null) {
-        _updateString();
-      }
-    });
+    if (widget.isInternet == 3)
+      _streamSubscription = _updateController.stream.listen((_) {
+        if (_latestPurity != null &&
+            _latestFlowRate != null &&
+            _latestPressure != null &&
+            _latestTemperature != null) {
+          _updateString();
+        }
+      });
   }
 
   void _updateDataSource() {
@@ -260,7 +286,17 @@ class _LineCharWidState extends State<LineCharWid> {
     );
   }
 
-  void _initialData() {
+  Future<void> _getLPMValuesWithDelay(String serialNo) async {
+    // Introduce a 3-second delay
+
+    // After the delay, update the state with new values
+    setState(() {
+      _maxYAxisValue = _getLPMYAxisMaxValue(serialNo);
+      _intervalYAxisValue = _getLPMYAxisIntervalValue(serialNo);
+    });
+  }
+
+  void _initialData() async {
     _purityData.add(_ChartData(60, -1));
     _pressureData.add(_ChartData(60, -1));
     _flowRateData.add(_ChartData(60, -1));
@@ -272,21 +308,50 @@ class _LineCharWidState extends State<LineCharWid> {
   }
 
   Future<Tuple2<double, double>?> setMinMax(String gasName) async {
-    final data = await ApiService.fetchMinMaxData();
+    Map<String, dynamic> jsonData;
+    print("internettdfg: ${widget.isInternet}");
+    if (widget.isInternet == 2) {
+      String payload = mqttService.topic2Payload;
+      print("Topic 2 Payload: $payload");
+      if (payload != null) {
+        jsonData = jsonDecode(payload); // Parse the payload JSON
+        print("jsondatadcdc: $jsonData");
+      } else {
+        return null; // Return null if payload is missing
+      }
+    } else {
+      final data = await ApiService.fetchMinMaxData();
+      // Map the fetched data to a similar structure for consistency
+      jsonData = {
+        'o2_min': data.o2Min,
+        'o2_max': data.o2Max,
+        'flow_min': data.flowMin,
+        'flow_max': data.flowMax,
+        'temperature_min': data.temperatureMin,
+        'temperature_max': data.temperatureMax,
+        'pressure_min': data.pressureMin,
+        'pressure_max': data.pressureMax
+      };
+    }
+
+    // Switch statement to return min and max values for the requested gas
     switch (gasName) {
       case "O2":
-        return Tuple2(double.parse(data.o2Max), double.parse(data.o2Min));
+        return Tuple2(double.parse(jsonData['o2_max'].toString()),
+            double.parse(jsonData['o2_min'].toString()));
 
       case "Flow":
-        return Tuple2(double.parse(data.flowMax), double.parse(data.flowMin));
+        return Tuple2(double.parse(jsonData['flow_max'].toString()),
+            double.parse(jsonData['flow_min'].toString()));
 
       case "Pr":
-        return Tuple2(
-            double.parse(data.pressureMax), double.parse(data.pressureMin));
+        return Tuple2(double.parse(jsonData['pressure_max'].toString()),
+            double.parse(jsonData['pressure_min'].toString()));
 
       case "Temp":
-        return Tuple2(double.parse(data.temperatureMax),
-            double.parse(data.temperatureMin));
+        return Tuple2(double.parse(jsonData['temperature_max'].toString()),
+            double.parse(jsonData['temperature_min'].toString()));
+
       default:
         return null;
     }
@@ -296,13 +361,13 @@ class _LineCharWidState extends State<LineCharWid> {
     MinMaxData data = await ApiService.fetchMinMaxData();
 
     final prefs = await SharedPreferences.getInstance();
-    final _db = await AppDbSingleton().database;
+    final db = await AppDbSingleton().database;
     await _loadLimits();
 
     if ((Purity_maxLimit!).toString() != data.o2Max ||
         (Purity_minLimit!).toString() != data.o2Min) {
       try {
-        await _db.insertLimitSetting(LimitSettingsTableCompanion(
+        await db.insertLimitSetting(LimitSettingsTableCompanion(
           limit_max: drift.Value(double.tryParse(data.o2Max)!),
           limit_min: drift.Value(double.tryParse(data.o2Min)!),
           type: const drift.Value("Purity"),
@@ -319,7 +384,7 @@ class _LineCharWidState extends State<LineCharWid> {
 
     if ((Flow_maxLimit!).toString() != data.flowMax ||
         (Flow_minLimit!).toString() != data.flowMin) {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
+      await db.insertLimitSetting(LimitSettingsTableCompanion(
         limit_max: drift.Value(double.tryParse(data.flowMax)!),
         limit_min: drift.Value(double.tryParse(data.flowMin)!),
         type: const drift.Value("Flow"),
@@ -329,11 +394,10 @@ class _LineCharWidState extends State<LineCharWid> {
       await prefs.setDouble('flowMax', double.tryParse(data.flowMax)!);
       await prefs.setDouble('flowMin', double.tryParse(data.flowMin)!);
     }
-    print(
-        "Pressure maxxxlimit ===> ${(Pressure_maxLimit!).toString()}    ${data.pressureMax}");
+
     if ((Pressure_maxLimit!).toString() != data.pressureMax ||
         (Pressure_minLimit!).toString() != data.pressureMin) {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
+      await db.insertLimitSetting(LimitSettingsTableCompanion(
         limit_max: drift.Value(double.tryParse(data.pressureMax)!),
         limit_min: drift.Value(double.tryParse(data.pressureMin)!),
         type: const drift.Value("Pressure"),
@@ -346,7 +410,7 @@ class _LineCharWidState extends State<LineCharWid> {
 
     if ((Temp_maxLimit!).toString() != data.temperatureMax ||
         (Temp_minLimit!).toString() != data.temperatureMin) {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
+      await db.insertLimitSetting(LimitSettingsTableCompanion(
         limit_max: drift.Value(double.tryParse(data.temperatureMax)!),
         limit_min: drift.Value(double.tryParse(data.temperatureMin)!),
         type: const drift.Value("Temperature"),
@@ -368,12 +432,11 @@ class _LineCharWidState extends State<LineCharWid> {
     final prefs = await SharedPreferences.getInstance();
     try {
       setState(() {
-        print("jijijijiji - > ${prefs.get("purityMax")}");
         Purity_maxLimit = prefs.getDouble("purityMax") ?? -1.0;
 
         Purity_minLimit = prefs.getDouble("purityMin") ?? -1.0;
         Flow_maxLimit = prefs.getDouble("flowMax") ?? -1.0;
-        print("Flow max Load: $Flow_maxLimit");
+
         Flow_minLimit = prefs.getDouble("flowMin") ?? -1.0;
         Pressure_maxLimit = prefs.getDouble("pressureMax") ?? -1.0;
         Pressure_minLimit = prefs.getDouble("pressureMin") ?? -1.0;
@@ -383,7 +446,7 @@ class _LineCharWidState extends State<LineCharWid> {
     } catch (e) {
       print("Error loading limits $e");
     }
-    _updateString();
+    if (widget.isInternet == 3) _updateString();
   }
 
   void _addString(String value) {
@@ -419,9 +482,8 @@ class _LineCharWidState extends State<LineCharWid> {
     });
   }
 
-  String serialNo = " ";
   void _updateString() async {
-    final _db = await AppDbSingleton().database;
+    final db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
     serialNo = await prefs.getString('serialNo') ?? '';
     if ((_latestPurity! > Purity_maxLimit! ||
@@ -429,7 +491,7 @@ class _LineCharWidState extends State<LineCharWid> {
       // print("Purity max: $Purity_maxLimit");
       if (!purityAlarmTriggered) {
         try {
-          _db.insertAlarm(AlarmTableCompanion(
+          db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestPurity!),
             limitmax: drift.Value(Purity_maxLimit!),
             limitmin: drift.Value(Purity_minLimit!),
@@ -438,7 +500,7 @@ class _LineCharWidState extends State<LineCharWid> {
             recordedAt: drift.Value(DateTime.now()),
           ));
           prefs.setDouble("PurityP", _latestPurity!);
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
+          List<AlarmTableData> storedData = await db.getAllAlarms();
           purityAlarmTriggered = true;
           print("Store Alarms: $storedData");
         } catch (e) {
@@ -471,7 +533,7 @@ class _LineCharWidState extends State<LineCharWid> {
         printvalue != 112) {
       if (!flowAlarmTriggered) {
         try {
-          _db.insertAlarm(AlarmTableCompanion(
+          db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestFlowRate!),
             limitmax: drift.Value(Flow_maxLimit!),
             limitmin: drift.Value(Flow_minLimit!),
@@ -480,7 +542,7 @@ class _LineCharWidState extends State<LineCharWid> {
             recordedAt: drift.Value(DateTime.now()),
           ));
           prefs.setDouble("FlowP", _latestFlowRate!);
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
+          List<AlarmTableData> storedData = await db.getAllAlarms();
           flowAlarmTriggered = true;
           print("Store Alarms: $storedData");
         } catch (e) {
@@ -511,7 +573,7 @@ class _LineCharWidState extends State<LineCharWid> {
       // Check if the alarm has already been triggered
       if (!pressureAlarmTriggered) {
         try {
-          _db.insertAlarm(AlarmTableCompanion(
+          db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestPressure!),
             limitmax: drift.Value(Pressure_maxLimit!),
             limitmin: drift.Value(Pressure_minLimit!),
@@ -520,7 +582,7 @@ class _LineCharWidState extends State<LineCharWid> {
             recordedAt: drift.Value(DateTime.now()),
           ));
           prefs.setDouble("PressureP", _latestPressure!);
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
+          List<AlarmTableData> storedData = await db.getAllAlarms();
           print("Stored Alarms: $storedData");
 
           // Set alarm as triggered
@@ -553,7 +615,7 @@ class _LineCharWidState extends State<LineCharWid> {
         _latestTemperature! < Temp_minLimit!) {
       if (!tempAlarmTriggered) {
         try {
-          _db.insertAlarm(AlarmTableCompanion(
+          db.insertAlarm(AlarmTableCompanion(
             value: drift.Value(_latestTemperature!),
             limitmax: drift.Value(Temp_maxLimit!),
             limitmin: drift.Value(Temp_minLimit!),
@@ -564,7 +626,7 @@ class _LineCharWidState extends State<LineCharWid> {
           prefs.setDouble("TempP", _latestTemperature!);
           print("Storing Temperature: $_latestTemperature");
           tempAlarmTriggered = true;
-          List<AlarmTableData> storedData = await _db.getAllAlarms();
+          List<AlarmTableData> storedData = await db.getAllAlarms();
           print("Store Alarms: $storedData");
         } catch (e) {
           print("Error to store alarms : $e");
@@ -591,7 +653,7 @@ class _LineCharWidState extends State<LineCharWid> {
         _latestFlowRate! > Flow_maxLimit! ||
         _latestFlowRate! < Flow_minLimit! ||
         _latestPressure! > Pressure_maxLimit! ||
-        // _latestPressure! < Pressure_minLimit! ||
+        _latestPressure! < Pressure_minLimit! ||
         _latestTemperature! > Temp_maxLimit! ||
         _latestTemperature! < Temp_minLimit!) {
       if (!isMuted1) {
@@ -605,30 +667,43 @@ class _LineCharWidState extends State<LineCharWid> {
   }
 
   double _getLPMYAxisMaxValue(String serialNo) {
-    if (serialNo.startsWith('OP1')) {
-      return 100;
-    } else if (serialNo.startsWith('OP2')) {
-      return 200;
-    } else if (serialNo.startsWith('OP5')) {
-      return 500;
-    } else if (serialNo.startsWith('OP9')) {
-      return 999;
-    } else {
-      return 010; // Default value if no match
+    print("serial numberfbajhbj: $serialNo");
+    switch (serialNo.substring(0, 3)) {
+      // Switch on the first 3 characters
+      case 'OP1':
+        return 100;
+
+      case 'OP2':
+        return 200;
+
+      case 'OP5':
+        return 500;
+
+      case 'OP9':
+        return 999;
+
+      default:
+        return 10; // Default value if no match
     }
   }
 
   double _getLPMYAxisIntervalValue(String serialNo) {
-    if (serialNo.startsWith('OP1')) {
-      return 25;
-    } else if (serialNo.startsWith('OP2')) {
-      return 50;
-    } else if (serialNo.startsWith('OP5')) {
-      return 125;
-    } else if (serialNo.startsWith('OP9')) {
-      return 250;
-    } else {
-      return 2.5; // Default value if no match
+    switch (serialNo.substring(0, 3)) {
+      // Switch on the first 3 characters
+      case 'OP1':
+        return 25;
+
+      case 'OP2':
+        return 50;
+
+      case 'OP5':
+        return 125;
+
+      case 'OP9':
+        return 250;
+
+      default:
+        return 2.5; // Default value if no match
     }
   }
 
@@ -732,7 +807,7 @@ class _LineCharWidState extends State<LineCharWid> {
                 Expanded(
                   flex: 9,
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.only(right: 2),
                     child: Column(
                       children: [
                         Expanded(
@@ -815,9 +890,9 @@ class _LineCharWidState extends State<LineCharWid> {
                               ),
 
                               primaryYAxis: NumericAxis(
-                                maximum: _getLPMYAxisMaxValue(serialNo),
+                                maximum: _maxYAxisValue,
                                 minimum: 0,
-                                interval: _getLPMYAxisIntervalValue(serialNo),
+                                interval: _intervalYAxisValue,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
                                 title: AxisTitle(text: 'LPM'),
@@ -1123,7 +1198,7 @@ class _LineCharWidState extends State<LineCharWid> {
                                         "Setting",
                                         style: TextStyle(
                                           color: parameterTextColor[2],
-                                          fontSize: 20,
+                                          fontSize: screenHeight / 22,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -1287,7 +1362,7 @@ class _LineCharWidState extends State<LineCharWid> {
                                         "Report",
                                         style: TextStyle(
                                           color: parameterTextColor[3],
-                                          fontSize: 20,
+                                          fontSize: screenHeight / 22,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -1401,7 +1476,6 @@ class _LineCharWidState extends State<LineCharWid> {
   int? printvalue;
 
   Future<void> getData() async {
-    print("Max purity: ${Purity_maxLimit}");
     var url = Uri.parse('http://192.168.4.1/getdata');
 
     try {
@@ -1430,29 +1504,40 @@ class _LineCharWidState extends State<LineCharWid> {
               pressure = 99.9;
             }
           }
-          if (_serialNo!.startsWith("OP1")) {
-            if (flowRate > 100) {
-              flowRate = 100.0;
-            }
-          } else if (_serialNo!.startsWith("OP2")) {
-            if (flowRate > 100) {
-              flowRate = 100.0;
-            }
-            if (flowRate > 200) {
-              flowRate = 200.0;
-            }
-          } else if (_serialNo!.startsWith("OP5")) {
-            if (flowRate > 500.0) {
-              flowRate = 500;
-            }
-          } else if (_serialNo!.startsWith("OP9")) {
-            if (flowRate > 999) {
-              flowRate = 999;
-            }
-          } else {
-            if (flowRate > 10) {
-              flowRate = 10.0;
-            }
+          switch (_serialNo?.substring(0, 3)) {
+            // Switch on the first 3 characters of _serialNo
+            case 'OP1':
+              if (flowRate > 100) {
+                flowRate = 100.0;
+              }
+              break;
+
+            case 'OP2':
+              if (flowRate > 100) {
+                flowRate = 100.0;
+              }
+              if (flowRate > 200) {
+                flowRate = 200.0;
+              }
+              break;
+
+            case 'OP5':
+              if (flowRate > 500.0) {
+                flowRate = 500.0;
+              }
+              break;
+
+            case 'OP9':
+              if (flowRate > 999) {
+                flowRate = 999;
+              }
+              break;
+
+            default:
+              if (flowRate > 10) {
+                flowRate = 10.0;
+              }
+              break;
           }
           if (temperature > 99.9) {
             temperature = 99.9;
@@ -1499,9 +1584,112 @@ class _LineCharWidState extends State<LineCharWid> {
     }
   }
 
+  String serialNo = " ";
+  void getMqttdata(String payload) {
+    try {
+      Map<String, dynamic> jsonData = jsonDecode(payload);
+
+      double purity = double.tryParse(jsonData['Purity'] ?? '0.0')!;
+      double flowRate = double.tryParse(jsonData['Flow Rate'] ?? '0.0')!;
+      double pressure = double.tryParse(jsonData['Pressure'] ?? '0.0')!;
+      double temperature = double.tryParse(jsonData['Temperature'] ?? '0.0')!;
+      setState(() {
+        serialNo = jsonData['serialNo'] ?? '';
+      });
+
+      print("serial njkvnfjhnvud: $serialNo");
+      if (purity > 99.9) {
+        purity = 99.9;
+      }
+      if (serialNo.startsWith("ODC")) {
+        if (pressure > 20.0) {
+          pressure = 20.0;
+        }
+      } else {
+        if (pressure >= 100) {
+          pressure = 99.9;
+        }
+      }
+
+      switch (serialNo.substring(0, 3)) {
+        case 'OP1':
+          if (flowRate > 100) {
+            flowRate = 100.0;
+          }
+          break;
+
+        case 'OP2':
+          if (flowRate > 100) {
+            flowRate = 100.0;
+          }
+          if (flowRate > 200) {
+            flowRate = 200.0;
+          }
+          break;
+
+        case 'OP5':
+          if (flowRate > 500.0) {
+            flowRate = 500.0;
+          }
+          break;
+
+        case 'OP9':
+          if (flowRate > 999) {
+            flowRate = 999;
+          }
+          break;
+
+        default:
+          if (flowRate > 10) {
+            flowRate = 10.0;
+          }
+          break;
+      }
+
+      if (temperature > 99.9) {
+        temperature = 99.9;
+      }
+
+      // Add the processed values to the respective lists
+      purityList.add(purity);
+      flowRateList.add(flowRate);
+      pressureList.add(pressure);
+      temperatureList.add(temperature);
+
+      // Update state and cache
+      setState(() {
+        _cache.add({
+          'purity': purity,
+          'flowRate': flowRate,
+          'pressure': pressure,
+          'temperature': temperature,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      });
+
+      // Determine print value based on serialNo
+      if (serialNo.startsWith("ODG") ||
+          serialNo.startsWith("ODP") ||
+          serialNo.startsWith("ODA")) {
+        printvalue = 111;
+      } else if (serialNo.startsWith("OPP") || serialNo.startsWith("OGP")) {
+        printvalue = 112;
+      }
+
+      // Add data to stream controllers
+      _purityController.add(purity);
+      _flowRateController.add(flowRate);
+      _pressureController.add(pressure);
+      _temperatureController.add(temperature);
+    } catch (e, stackTrace) {
+      print('Error parsing MQTT data: $e');
+      print("Error Stacktrace: $stackTrace");
+    }
+  }
+
   Future<void> printStoredData() async {
-    final _db = await AppDbSingleton().database;
-    List<OxyDatabaseData> storedData = await _db.getAllOxyData();
+    final db = await AppDbSingleton().database;
+    List<OxyDatabaseData> storedData = await db.getAllOxyData();
     for (var data in storedData) {
       print(
           'ID: ${data.id}, Purity: ${data.purity}, Flow Rate: ${data.flow}, Pressure: ${data.pressure}, Temperature: ${data.temp}, Serial No: ${data.serialNo}, DateTime: ${data.recordedAt}');
@@ -1511,7 +1699,7 @@ class _LineCharWidState extends State<LineCharWid> {
   }
 
   Future<void> storeAverageData() async {
-    final _db = await AppDbSingleton().database;
+    final db = await AppDbSingleton().database;
     String? serialNo = _serialNo;
     DateTime dateTime = DateTime.now();
     var url_1m = Uri.parse('http://192.168.4.1/getdata_1m');
@@ -1538,7 +1726,7 @@ class _LineCharWidState extends State<LineCharWid> {
             recordedAt: drift.Value(dateTime),
           );
 
-          await _db.insertOxyData(entity);
+          await db.insertOxyData(entity);
           printStoredData();
         }
       } else {

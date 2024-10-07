@@ -1,18 +1,24 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Database/db/app_db.dart';
 import '../LimitSetting.dart/api_service.dart';
 import '../LimitSetting.dart/min_max_data.dart';
 import '../Report_screens/old_report_screen.dart';
 import '../Demo/demo.dart';
+import '../Services/mqtt_connect.dart';
 import 'HomePage.dart';
+import 'login_internet.dart';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+  Dashboard({super.key, required this.version});
+  String version;
 
   @override
   State<StatefulWidget> createState() {
@@ -25,7 +31,8 @@ class _DashboardState extends State<Dashboard>
   String? _wifiName;
   bool _isLoading = false;
   final String _targetWifiName = "Oxydata_1";
-  final LineCharWid _lineChartWid = const LineCharWid();
+  int isInternet = 1;
+
   bool checker = false;
 
   late AnimationController _animationController;
@@ -40,16 +47,13 @@ class _DashboardState extends State<Dashboard>
 
   String _formattedDateTime = '';
   late Timer _dateTimeTimer;
+  late MqttService mqttService;
 
   @override
   void initState() {
     super.initState();
 
     fetchSerialNumbers();
-    _initWifiName();
-
-    _startWifiCheckTimer();
-    getSerialNo();
 
     // Initialize animation controller
     _animationController = AnimationController(
@@ -79,7 +83,8 @@ class _DashboardState extends State<Dashboard>
 
   @override
   void dispose() {
-    _stopWifiCheckTimer();
+    _wifiCheckTimer.cancel();
+
     _animationController.dispose();
     _dateTimeTimer.cancel();
     super.dispose();
@@ -101,7 +106,8 @@ class _DashboardState extends State<Dashboard>
       }
     } on PlatformException catch (e) {
       // ignore: avoid_print
-      print("Error to getting wifi name: $e");
+      print("Error in wifi getting name: $e");
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -124,10 +130,6 @@ class _DashboardState extends State<Dashboard>
     _wifiCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       _updateWifiStatus();
     });
-  }
-
-  void _stopWifiCheckTimer() {
-    _wifiCheckTimer.cancel();
   }
 
   void _updateWifiStatus() async {
@@ -177,9 +179,51 @@ class _DashboardState extends State<Dashboard>
         });
       }
     } catch (e) {
-      setState(() {
-        checker = false;
-      });
+      if (mounted) {
+        setState(() {
+          checker = false;
+        });
+      }
+    }
+  }
+
+  Future<void> getInternetSerialNo(String serialNo1) async {
+    try {
+      String newSerialNo = serialNo1;
+      print("seialnondcvnkjnvk: $serialNo1");
+
+      if (mounted) {
+        setState(() {
+          serialNo = newSerialNo;
+
+          if (serialNo.startsWith('ODC')) {
+            oxyDataTitle = 'OxyData -C';
+          } else if (serialNo.startsWith('ODG')) {
+            oxyDataTitle = 'OxyData -G';
+          } else if (serialNo.startsWith('OGP')) {
+            oxyDataTitle = 'OxyData -GP';
+          } else if (serialNo.startsWith('ODP')) {
+            oxyDataTitle = 'OxyData -P';
+          } else if (serialNo.startsWith('OPP')) {
+            oxyDataTitle = 'OxyData -PP';
+          } else if (serialNo.startsWith('OP9') ||
+              serialNo.startsWith('OP1') ||
+              serialNo.startsWith('OP2') ||
+              serialNo.startsWith('OP5')) {
+            oxyDataTitle = 'OxyData -PPF';
+          } else if (serialNo.startsWith('ODA')) {
+            oxyDataTitle = 'OxyData -AV';
+          }
+
+          checker = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          checker = false;
+        });
+      }
     }
   }
 
@@ -272,7 +316,7 @@ class _DashboardState extends State<Dashboard>
                 ),
               ),
               Container(
-                width: 150,
+                width: MediaQuery.of(context).size.height / 2.2,
                 child: Text(
                   _formattedDateTime,
                   style: const TextStyle(
@@ -292,12 +336,16 @@ class _DashboardState extends State<Dashboard>
             : RefreshIndicator(
                 onRefresh: _refreshPage, // Your refresh logic
 
-                child: (_wifiName == "\"$_targetWifiName\"") ||
+                child: ((_wifiName == "\"$_targetWifiName\"") ||
                         _isConnected ||
-                        checker
+                        checker ||
+                        isInternet == 2)
                     ? Stack(
                         children: [
-                          _lineChartWid,
+                          LineCharWid(
+                            isInternet: isInternet,
+                            mqttService: isInternet == 2 ? mqttService : null,
+                          )
                         ],
                       )
                     : Center(
@@ -322,39 +370,80 @@ class _DashboardState extends State<Dashboard>
                               style: TextStyle(fontSize: 16),
                             ),
                             const SizedBox(height: 10),
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width / 4,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) => const DemoWid()));
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
-                                  shadowColor: Colors.blueAccent,
-                                  elevation: 10,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 10),
-                                  textStyle: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: MediaQuery.of(context).size.width / 4,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      _showCustomDialog(context);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      shadowColor: Colors.blueAccent,
+                                      elevation: 10,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 10),
+                                      textStyle: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.refresh, size: 24),
+                                        SizedBox(width: 10),
+                                        Text('Connect'),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.play_arrow, size: 24),
-                                    SizedBox(width: 10),
-                                    Text('Demo Mode'),
-                                  ],
+                                const SizedBox(
+                                  width: 10,
                                 ),
-                              ),
+                                SizedBox(
+                                  width: MediaQuery.of(context).size.width / 4,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (_) => DemoWid(
+                                                    version: widget.version,
+                                                  )));
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      shadowColor: Colors.blueAccent,
+                                      elevation: 10,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 10),
+                                      textStyle: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.play_arrow, size: 24),
+                                        SizedBox(width: 10),
+                                        Text('Demo Mode'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(
                               height: 10,
@@ -435,6 +524,115 @@ class _DashboardState extends State<Dashboard>
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCustomDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choose Connection Type'),
+          content: const Text('Please choose how to connect.'),
+          actions: [
+            // Local Device Button
+            SizedBox(
+              width: MediaQuery.of(context).size.width / 4,
+              child: ElevatedButton(
+                onPressed: () async {
+                  setState(() {
+                    isInternet = 3;
+                  });
+                  _initWifiName();
+                  _startWifiCheckTimer();
+                  getSerialNo();
+                  Navigator.pop(context); // Close the dialog
+                  // Add your functionality for local device connection here
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.blueAccent,
+                  elevation: 10,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  textStyle: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.devices, size: 24),
+                    SizedBox(width: 10),
+                    Text('Local Device'),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Internet Button
+            SizedBox(
+              width: MediaQuery.of(context).size.width / 4,
+              child: ElevatedButton(
+                onPressed: () async {
+                  setState(() {
+                    isInternet = 2;
+                  });
+                  mqttService = MqttService();
+                  mqttService.connect();
+                  mqttService.messageStream.listen((message) {
+                    try {
+                      var jsonData = jsonDecode(message);
+                      serialNo = jsonData['serialNo'] ?? '';
+                      print("seialnondcvnkjnvkcvdc: $serialNo");
+
+                      getInternetSerialNo(serialNo);
+                    } catch (e) {
+                      print("Error parsing message: $e");
+                    }
+                  });
+
+                  Navigator.pop(context); // Close the dialog
+
+                  // Navigator.push(
+                  //   context,
+                  //   MaterialPageRoute(
+                  //       builder: (_) => LoginPage()), // Navigate to login page
+                  // );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.blueAccent,
+                  elevation: 10,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  textStyle: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.wifi, size: 24),
+                    SizedBox(width: 10),
+                    Text('Internet'),
+                  ],
+                ),
+              ),
             ),
           ],
         );

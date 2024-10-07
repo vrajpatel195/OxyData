@@ -221,8 +221,8 @@ class _PressureSettingState extends State<PressureSetting> {
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content:
-                                          Text('Data posted successfully')),
+                                      content: Text(
+                                          'Pressure Limit Set successfully')),
                                 );
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(

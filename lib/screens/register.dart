@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:oxydata/screens/main_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'main_page.dart';
 import '../Demo/demo.dart';
 
+// ignore: must_be_immutable
 class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({super.key});
+  RegistrationScreen({super.key, required this.version});
+  String version;
 
   @override
   _RegistrationScreenState createState() => _RegistrationScreenState();
@@ -55,7 +57,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => Dashboard(),
+        builder: (context) => Dashboard(
+          version: widget.version,
+        ),
       ),
     );
   }
@@ -87,7 +91,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => DemoWid(),
+                    builder: (context) => DemoWid(
+                      version: widget.version,
+                    ),
                   ),
                 );
               },

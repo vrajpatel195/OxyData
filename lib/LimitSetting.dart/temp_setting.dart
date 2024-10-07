@@ -119,7 +119,7 @@ class _TempSettingState extends State<TempSetting> {
     setState(() {
       _holdTime++;
       callback();
-       if (_holdTime == 2) {
+      if (_holdTime == 2) {
         _resetIncrementTimer(
             Duration(milliseconds: 250), callback); // Medium speed
       } else if (_holdTime == 5) {
@@ -221,8 +221,8 @@ class _TempSettingState extends State<TempSetting> {
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content:
-                                          Text('Data posted successfully')),
+                                      content: Text(
+                                          'Temperature Limit Set successfully')),
                                 );
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(

@@ -7,8 +7,10 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class GenerateReport {
   final List<Map<String, dynamic>> data;
@@ -405,6 +407,17 @@ class GenerateReport {
     final _weekStartDate = weekStartDate ?? DateTime.now();
     final _weekEndDate = weekEndDate ?? DateTime.now();
     final pdf = pw.Document();
+    int androidVersion = 0;
+    int sdkVersion1 = 0;
+    String versionRelease = "";
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+
+    sdkVersion1 = androidInfo.version.sdkInt;
+    versionRelease = androidInfo.version.release;
+
+    print('Android SDK: $sdkVersion1');
+    print('Android Version: $versionRelease');
 
     _calculateMinMaxAvgValues(); // Ensure this function is defined and works correctly
 
@@ -419,11 +432,13 @@ class GenerateReport {
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String hospitalName = prefs.getString('hospital_name') ?? "null";
+    final DateFormat formatter = DateFormat('dd-MM-yyyy HH:mm:ss');
 
     final headers = ['DateTime', 'Limit Max', 'Limit Min', 'Type'];
     final dataRows1 = datainitialLimit.map((data) {
+      final timestamp = DateTime.parse(data['timestamp'].toString());
       return [
-        data['timestamp'].toString(),
+        formatter.format(timestamp),
         data['limit_max'].toString(),
         data['limit_min'].toString(),
         data['type'].toString(),
@@ -431,8 +446,9 @@ class GenerateReport {
     }).toList();
 
     final dataRows2 = dataLimit.map((data) {
+      final timestamp = DateTime.parse(data['timestamp'].toString());
       return [
-        data['timestamp'].toString(),
+        formatter.format(timestamp),
         data['limit_max'].toString(),
         data['limit_min'].toString(),
         data['type'].toString(),
@@ -448,9 +464,11 @@ class GenerateReport {
       'Alarms',
       'Type'
     ];
+
     final dataAlarmsRow = dataAlarms.map((data) {
+      final timestamp = DateTime.parse(data['timestamp'].toString());
       return [
-        data['timestamp'].toString(),
+        formatter.format(timestamp),
         data['limitmax'].toString(),
         data['limitmin'].toString(),
         data['Alarms'].toString(),
@@ -648,37 +666,79 @@ class GenerateReport {
         return content;
       },
     ));
+    if (sdkVersion1 <= 29) {
+      if (await _requestStoragePermission()) {
+        final directory =
+            Directory('/storage/emulated/0/Download/OxyData/$title');
+        if (!directory.existsSync()) {
+          directory.createSync(recursive: true);
+        }
 
-    try {
-      final documentsDir =
-          Directory('/storage/emulated/0/Download/OxyData/$title');
-      final documentsDirectory = await getExternalStorageDirectory();
+        String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final filePath = '${directory.path}/Report$title _$timestamp.pdf';
+        final file = File(filePath);
 
-      if (!documentsDir.existsSync()) {
-        documentsDir.createSync(recursive: true);
+        final pdfBytes =
+            await pdf.save(); // Assuming you have the pdf data ready
+        await file.writeAsBytes(pdfBytes);
+
+        OpenFile.open(filePath);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF saved to Downloads: $filePath')),
+        );
+      } else {
+        // Permission denied - generate report but not save it
+        final pdfBytes = await pdf.save();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Permission denied. Report generated but not saved.')),
+        );
       }
+    } else {
+      try {
+        final documentsDir =
+            Directory('/storage/emulated/0/Download/OxyData/$title');
+        final documentsDirectory = await getExternalStorageDirectory();
 
-      String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final filePath = '${documentsDir.path}/Report$title _$timestamp.pdf';
-      final filepathopen =
-          '${documentsDirectory?.path}/Report$title _$timestamp.pdf';
+        if (!documentsDir.existsSync()) {
+          documentsDir.createSync(recursive: true);
+        }
 
-      final file = File(filePath);
-      final fileopen = File(filepathopen);
+        String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final filePath = '${documentsDir.path}/Report$title _$timestamp.pdf';
+        final filepathopen =
+            '${documentsDirectory?.path}/Report$title _$timestamp.pdf';
 
-      final pdfBytes = await pdf.save();
-      await file.writeAsBytes(pdfBytes);
-      await fileopen.writeAsBytes(pdfBytes);
+        final file = File(filePath);
+        final fileopen = File(filepathopen);
 
-      final result = await OpenFile.open(filepathopen);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF saved to $filepathopen')),
-      );
-      print("File Path: $filePath");
-      print("Open File Result: ${result.message}");
-    } catch (e) {
-      print("Failed to save or open file: $e");
+        final pdfBytes = await pdf.save();
+        await file.writeAsBytes(pdfBytes);
+        await fileopen.writeAsBytes(pdfBytes);
+
+        final result = await OpenFile.open(filepathopen);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF saved to $filepathopen')),
+        );
+        print("File Path: $filePath");
+        print("Open File Result: ${result.message}");
+      } catch (e) {
+        print("Failed to save or open file: $e");
+      }
     }
+  }
+
+  Future<bool> _requestStoragePermission() async {
+    PermissionStatus status = await Permission.storage.status;
+
+    if (status.isDenied || status.isPermanentlyDenied) {
+      status = await Permission.storage.request();
+    }
+
+    return status.isGranted;
   }
 
   void _addPaginatedTable(List<pw.Widget> content, List<String> headers,

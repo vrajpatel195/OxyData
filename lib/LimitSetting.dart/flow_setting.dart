@@ -113,7 +113,7 @@ class _FlowSettingState extends State<FlowSetting> {
     setState(() {
       _holdTime++;
       callback();
-       if (_holdTime == 2) {
+      if (_holdTime == 2) {
         _resetIncrementTimer(
             Duration(milliseconds: 250), callback); // Medium speed
       } else if (_holdTime == 5) {
@@ -134,9 +134,8 @@ class _FlowSettingState extends State<FlowSetting> {
       } else if (_holdTime == 90) {
         _resetIncrementTimer(
             Duration(milliseconds: 10), callback); // Fast speed
-      }else if (_holdTime == 999) {
-        _resetIncrementTimer(
-            Duration(milliseconds: 1), callback); // Fast speed
+      } else if (_holdTime == 999) {
+        _resetIncrementTimer(Duration(milliseconds: 1), callback); // Fast speed
       }
     });
   }
@@ -218,7 +217,7 @@ class _FlowSettingState extends State<FlowSetting> {
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content: Text('Data posted successfully')),
+                                  content: Text('Flow Limit Set successfully')),
                             );
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(

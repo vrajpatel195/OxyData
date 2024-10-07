@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oxydata/screens/main_page.dart';
 import 'package:oxydata/screens/register.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Database/db/app_db.dart';
@@ -15,10 +16,12 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _animation;
+  String version = '';
 
   @override
   void initState() {
     super.initState();
+    _navigateToHome();
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(seconds: 2),
@@ -31,7 +34,21 @@ class _SplashScreenState extends State<SplashScreen>
     _navigateToHome();
   }
 
+  Future<String> _getAppVersion() async {
+    print("Above the app");
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    print("I I am Below the packageInfor : $packageInfo");
+    return packageInfo.version;
+  }
+
   _navigateToHome() async {
+    String fetchedVersion = await _getAppVersion();
+
+    print("version: $fetchedVersion");
+
+    setState(() {
+      version = fetchedVersion; // Update state to trigger UI rebuild
+    });
     final db = await AppDbSingleton().database;
 
     // Delete data older than 3 months
@@ -45,15 +62,16 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => Dashboard(),
+          builder: (context) => Dashboard(version: version),
         ),
       );
     } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-            builder: (context) =>
-                RegistrationScreen()), // Replace HomeScreen with your main screen
+            builder: (context) => RegistrationScreen(
+                  version: version,
+                )), // Replace HomeScreen with your main screen
       );
     }
   }
@@ -96,6 +114,8 @@ class _SplashScreenState extends State<SplashScreen>
                   ]), // Add your logo here
               SizedBox(height: 20),
               CircularProgressIndicator(), // Optional: Add a loading indicator
+              SizedBox(height: 20),
+              Text("version: $version", style: TextStyle(fontSize: 16)),
             ],
           ),
         ),

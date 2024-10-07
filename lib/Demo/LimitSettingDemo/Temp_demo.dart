@@ -13,8 +13,8 @@ class TempDemo extends StatefulWidget {
 }
 
 class _TempState extends State<TempDemo> {
-  double maxLimit = 60;
-  double minLimit = 0;
+  double maxLimit = 40;
+  double minLimit = 30;
   Timer? _timer;
   Duration _timerDuration = Duration(milliseconds: 300);
   int _holdTime = 0;
@@ -29,8 +29,8 @@ class _TempState extends State<TempDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      maxLimit = prefs.getDouble('Temp_maxLimit') ?? 0;
-      minLimit = prefs.getDouble('Temp_minLimit') ?? 0;
+      maxLimit = prefs.getDouble('Temp_maxLimit') ?? 40;
+      minLimit = prefs.getDouble('Temp_minLimit') ?? 30;
     });
   }
 
@@ -259,7 +259,7 @@ class _TempState extends State<TempDemo> {
               GestureDetector(
                 onTap: () {
                   _saveLimit();
-                  _changeColor();
+
                   final value = 1;
                   Navigator.pop(context, value);
                 },
@@ -283,12 +283,5 @@ class _TempState extends State<TempDemo> {
     );
   }
 
-  Color _cardColor = Color.fromARGB(255, 4, 144, 199);
-  void _changeColor() {
-    setState(() {
-      _cardColor = _cardColor == Color.fromARGB(255, 4, 144, 199)
-          ? Colors.red
-          : Color.fromARGB(255, 4, 144, 199);
-    });
-  }
+  Color _cardColor = const Color.fromARGB(255, 238, 44, 144);
 }

@@ -12,8 +12,8 @@ class FlowDemo extends StatefulWidget {
 }
 
 class _FlowDemoState extends State<FlowDemo> {
-  double maxLimit = 0;
-  double minLimit = 0;
+  double maxLimit = 20;
+  double minLimit = 10;
   Timer? _timer;
   Duration _timerDuration = Duration(milliseconds: 300);
   int _holdTime = 0;
@@ -29,8 +29,8 @@ class _FlowDemoState extends State<FlowDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      maxLimit = prefs.getDouble('Flow_maxLimit') ?? 0;
-      minLimit = prefs.getDouble('Flow_minLimit') ?? 0;
+      maxLimit = prefs.getDouble('Flow_maxLimit') ?? 20;
+      minLimit = prefs.getDouble('Flow_minLimit') ?? 10;
     });
   }
 
@@ -163,7 +163,7 @@ class _FlowDemoState extends State<FlowDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: Color.fromARGB(255, 248, 186, 40),
+                      color: Color.fromARGB(255, 204, 148, 7),
                       child: Column(
                         children: [
                           Text(
@@ -216,7 +216,7 @@ class _FlowDemoState extends State<FlowDemo> {
                     height: MediaQuery.of(context).size.height * 0.25,
                     width: 150,
                     child: Card(
-                      color: Color.fromARGB(255, 248, 186, 40),
+                      color: Color.fromARGB(255, 204, 148, 7),
                       child: Column(
                         children: [
                           Text(
@@ -251,7 +251,7 @@ class _FlowDemoState extends State<FlowDemo> {
               GestureDetector(
                 onTap: () {
                   _saveLimit();
-                  _changeColor();
+
                   final value = 1;
                   Navigator.pop(context, value);
                 },
@@ -275,12 +275,5 @@ class _FlowDemoState extends State<FlowDemo> {
     );
   }
 
-  Color _cardColor = Color.fromARGB(255, 4, 144, 199);
-  void _changeColor() {
-    setState(() {
-      _cardColor = _cardColor == Color.fromARGB(255, 4, 144, 199)
-          ? Colors.red
-          : Color.fromARGB(255, 4, 144, 199);
-    });
-  }
+  Color _cardColor = const Color.fromARGB(255, 7, 51, 204);
 }

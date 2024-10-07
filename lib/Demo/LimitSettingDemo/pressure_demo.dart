@@ -12,7 +12,7 @@ class PressureDemo extends StatefulWidget {
 }
 
 class _PressureState extends State<PressureDemo> {
-  double maxLimit = 60;
+  double maxLimit = 20;
   double minLimit = 0;
   Timer? _timer;
   Duration _timerDuration = Duration(milliseconds: 300);
@@ -28,7 +28,7 @@ class _PressureState extends State<PressureDemo> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      maxLimit = prefs.getDouble('Pressure_maxLimit') ?? 0;
+      maxLimit = prefs.getDouble('Pressure_maxLimit') ?? 20;
       minLimit = prefs.getDouble('Pressure_minLimit') ?? 0;
     });
   }
@@ -251,7 +251,7 @@ class _PressureState extends State<PressureDemo> {
               GestureDetector(
                 onTap: () {
                   _saveLimit();
-                  _changeColor();
+
                   final value = 1;
                   Navigator.pop(context, value);
                 },
@@ -275,12 +275,5 @@ class _PressureState extends State<PressureDemo> {
     );
   }
 
-  Color _cardColor = Color.fromARGB(255, 4, 144, 199);
-  void _changeColor() {
-    setState(() {
-      _cardColor = _cardColor == Color.fromARGB(255, 4, 144, 199)
-          ? Colors.red
-          : Color.fromARGB(255, 4, 144, 199);
-    });
-  }
+  Color _cardColor = const Color.fromARGB(255, 0, 195, 0);
 }

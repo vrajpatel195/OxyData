@@ -10,8 +10,8 @@ class PurityDemo extends StatefulWidget {
 }
 
 class _PurityState extends State<PurityDemo> {
-  double maxLimit = 60;
-  double minLimit = 0;
+  double maxLimit = 90;
+  double minLimit = 80;
   Timer? _timer;
   Duration _timerDuration = Duration(milliseconds: 300);
   int _holdTime = 0;
@@ -25,8 +25,8 @@ class _PurityState extends State<PurityDemo> {
   void loadData() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      maxLimit = prefs.getDouble('Purity_maxLimit') ?? 0;
-      minLimit = prefs.getDouble('Purity_minLimit') ?? 0;
+      maxLimit = prefs.getDouble('Purity_maxLimit') ?? 90;
+      minLimit = prefs.getDouble('Purity_minLimit') ?? 80;
     });
   }
 
@@ -248,7 +248,7 @@ class _PurityState extends State<PurityDemo> {
               GestureDetector(
                 onTap: () {
                   _saveLimit();
-                  _changeColor();
+
                   final value = 1;
                   Navigator.pop(context, value);
                 },
@@ -272,12 +272,5 @@ class _PurityState extends State<PurityDemo> {
     );
   }
 
-  Color _cardColor = Color.fromARGB(255, 4, 144, 199);
-  void _changeColor() {
-    setState(() {
-      _cardColor = _cardColor == Color.fromARGB(255, 4, 144, 199)
-          ? Colors.red
-          : Color.fromARGB(255, 4, 144, 199);
-    });
-  }
+  Color _cardColor = const Color.fromARGB(255, 255, 165, 0);
 }

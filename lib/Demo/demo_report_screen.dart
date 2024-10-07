@@ -115,12 +115,13 @@ class _DemoReportScreenState extends State<DemoReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Center(
           child: Text("Report"),
         ),
         toolbarHeight: 40,
-        backgroundColor: Color.fromRGBO(255, 255, 255, 0.612),
+        backgroundColor: Color.fromARGB(141, 241, 241, 241),
       ),
       body: SingleChildScrollView(
         child: Row(
@@ -178,7 +179,7 @@ class _DemoReportScreenState extends State<DemoReportScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Old Report',
+                      'Past Report',
                       style:
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
