@@ -16,12 +16,15 @@ import '../widgets/generate_report.dart';
 class DailyReport extends StatefulWidget {
   final String remark;
   final String serialNo;
-  DailyReport(
-      {super.key,
-      required this.selectedDate,
-      required this.remark,
-      required this.serialNo});
+
+  DailyReport({
+    super.key,
+    required this.selectedDate,
+    required this.remark,
+    required this.serialNo,
+  });
   final DateTime? selectedDate;
+
   @override
   State<DailyReport> createState() => _DailyReportState();
 }

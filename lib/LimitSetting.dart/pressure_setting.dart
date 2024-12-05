@@ -10,7 +10,9 @@ import 'package:drift/drift.dart' as drift;
 class PressureSetting extends StatefulWidget {
   final double min;
   final double max;
-  PressureSetting({required this.min, required this.max});
+  final int isInternet;
+  PressureSetting(
+      {required this.min, required this.max, required this.isInternet});
   @override
   _PressureSettingState createState() => _PressureSettingState();
 }
@@ -36,7 +38,6 @@ class _PressureSettingState extends State<PressureSetting> {
   }
 
   Future<void> _saveToSharedPreferences() async {
-    final _db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
 
     double max = double.parse(pressuremax.toStringAsFixed(1));
@@ -45,18 +46,24 @@ class _PressureSettingState extends State<PressureSetting> {
     prefs.setDouble('pressureMax', max);
     prefs.setDouble('pressureMin', min);
 
-    DateTime dateTime = DateTime.now();
     serialNo = prefs.getString('serialNo') ?? "";
-    try {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
-        limit_max: drift.Value(max),
-        limit_min: drift.Value(min),
-        type: drift.Value("Pressure"),
-        serialNo: drift.Value(serialNo!),
-        recordedAt: drift.Value(dateTime),
-      ));
-    } catch (e) {
-      print("Error pressure max --> $e");
+    if (widget.isInternet == 3) {
+      final _db = await AppDbSingleton().database;
+      DateTime dateTime = DateTime.now();
+      try {
+        await _db.insertLimitSetting(LimitSettingsTableCompanion(
+          limit_max: drift.Value(max),
+          limit_min: drift.Value(min),
+          type: drift.Value("Pressure"),
+          serialNo: drift.Value(serialNo!),
+          recordedAt: drift.Value(dateTime),
+        ));
+      } catch (e) {
+        print("error in purity data--> $e");
+      }
+
+      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+      print("Storedddd data =>   $storedData");
     }
   }
 
@@ -216,7 +223,9 @@ class _PressureSettingState extends State<PressureSetting> {
                                   _isLoading = true;
                                 });
 
-                                await postStoredData();
+                                if (widget.isInternet == 3) {
+                                  await postStoredData();
+                                }
                                 Navigator.pop(context, 1);
 
                                 ScaffoldMessenger.of(context).showSnackBar(

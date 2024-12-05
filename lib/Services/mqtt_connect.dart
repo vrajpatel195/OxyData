@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:flutter/services.dart';
@@ -14,18 +15,24 @@ class MqttService {
   Stream<String> get messageStream => _messageController.stream;
   String topic1Payload = '';
   String topic2Payload = '';
+  VoidCallback? onDisconnectedCallback;
+  String serialNo = '';
+  SharedPreferences? prefs;
 
-  Future<void> connect() async {
-    client = await _connect();
+  Future<void> connect(BuildContext context, String serialNo) async {
+    client = await _connect(context);
+    prefs = await SharedPreferences.getInstance();
+    print("clientvdjhv1: $client");
     if (client != null &&
         client?.connectionStatus?.state == MqttConnectionState.connected) {
       print('Connected to MQTT');
+      subscribeToTopic1(serialNo, context);
     } else {
       print('Failed to connect to MQTT');
     }
   }
 
-  Future<MqttServerClient> _connect() async {
+  Future<MqttServerClient> _connect(BuildContext context) async {
     final mqttClient = MqttServerClient.withPort(
         'jmq.jcntechnology.in', 'flutter_client1', 8883);
 
@@ -35,6 +42,9 @@ class MqttService {
     };
     mqttClient.onDisconnected = () {
       print('Disconnected from MQTT broker');
+      if (onDisconnectedCallback != null) {
+        onDisconnectedCallback!(); // Trigger the callback when disconnected
+      }
     };
 
     // Load the certificates for TLS connection
@@ -73,30 +83,7 @@ class MqttService {
     if (mqttClient.connectionStatus?.state == MqttConnectionState.connected) {
       print('MQTT client connected');
 
-      const topic1 = 'OPP09240211/t_jw_dou_1s';
-      mqttClient.subscribe(topic1, MqttQos.atLeastOnce);
-      const topic2 = 'OPP09240211/t_jw_dou_para_1';
-      mqttClient.subscribe(topic2, MqttQos.atLeastOnce);
-      print('Subscribed to topics: $topic1 and $topic2');
-
-      mqttClient.updates?.listen((List<MqttReceivedMessage<MqttMessage>> c) {
-        final MqttPublishMessage message = c[0].payload as MqttPublishMessage;
-        final payload =
-            MqttPublishPayload.bytesToStringAsString(message.payload.message);
-        print('Received message: $payload from topic: ${c[0].topic}');
-
-        if (c[0].topic == topic1) {
-          topic1Payload = payload;
-          _messageController.add(payload);
-          print('Updated topic1Payload: $topic1Payload');
-        } else if (c[0].topic == topic2) {
-          topic2Payload = payload;
-          _messageController.add(payload);
-          print('Updated topic2Payload: $topic2Payload');
-        } else {
-          print('Message received on an unexpected topic: ${c[0].topic}');
-        }
-      });
+      //subscribeToTopic2();
     } else {
       print('Connection failed');
       mqttClient.disconnect();
@@ -105,7 +92,95 @@ class MqttService {
     return mqttClient;
   }
 
-  Future<void> publishPuritySettings() async {
+  void subscribeToTopic1(String serialNo, BuildContext context) {
+    print("serialNokvjhb: $serialNo");
+    String topic1 = '$serialNo/t_jw_dou_1s';
+
+    // Before subscribing, check if the client is connected
+    if (client == null ||
+        client?.connectionStatus?.state != MqttConnectionState.connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: Not connected to MQTT broker.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      print("Not connected to MQTT broker.");
+      return;
+    }
+
+    // Subscribe to the topic using the given serial number
+    client?.subscribe(topic1, MqttQos.atLeastOnce);
+
+    // Add a listener for subscription failures
+    client?.onSubscribeFail = (String topic) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to subscribe to the topic: $topic'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      print("Failed to subscribe to the topic: $topic");
+    };
+
+    print("Subscribed to topic: $topic1");
+
+    // Listen to updates from the subscribed topic
+    client?.updates?.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+      final MqttPublishMessage message = c[0].payload as MqttPublishMessage;
+      final payload =
+          MqttPublishPayload.bytesToStringAsString(message.payload.message);
+
+      if (c[0].topic == topic1) {
+        print('Received message for topic 1: $payload');
+
+        if (_isValidPayload(payload)) {
+          topic1Payload = payload;
+          _messageController.add(payload);
+          print('Updated topic1Payload: $topic1Payload');
+        } else {
+          // Show error in ScaffoldMessenger when serial number is wrong or invalid
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: Invalid or wrong serial number.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          print('Serial number is wrong or invalid.');
+        }
+      }
+    });
+  }
+
+// Helper function to validate the payload/message
+  bool _isValidPayload(String payload) {
+    // Here you can add your specific validation logic for the received payload
+    // This could involve checking for a specific format, error messages, or conditions
+    if (payload.isEmpty ||
+        payload.contains('error') ||
+        payload == 'INVALID_SERIAL') {
+      return false; // Consider this as an invalid payload
+    }
+    return true; // Payload is valid
+  }
+
+  void subscribeToTopic2(String serialNo) {
+    String topic2 = '$serialNo/t_jw_dou_para_1';
+    client?.subscribe(topic2, MqttQos.atLeastOnce);
+
+    client?.updates?.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+      final MqttPublishMessage message = c[0].payload as MqttPublishMessage;
+      final payload =
+          MqttPublishPayload.bytesToStringAsString(message.payload.message);
+      if (c[0].topic == topic2) {
+        print('Received message for topic 2: $payload');
+        topic2Payload = payload;
+        print('Updated topic2Payload: $topic2Payload');
+      }
+    });
+  }
+
+  Future<void> publishPuritySettings(String serialNo) async {
     if (client == null ||
         client?.connectionStatus?.state != MqttConnectionState.connected) {
       print('MQTT client is not connected');
@@ -135,13 +210,26 @@ class MqttService {
       "temperature_max": tempMax.toString(),
     });
 
-    const topic = 'OPP09240211/t_jw_din_para_1'; // Topic 3
+    String topic = '$serialNo/t_jw_din_para_1'; // Topic 3
 
     final builder = MqttClientPayloadBuilder();
     builder.addString(messagePayload);
 
     client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
     print('Message published to $topic: $messagePayload');
+  }
+
+  String getConnectionStatusMessage() {
+    switch (client?.connectionStatus?.state) {
+      case MqttConnectionState.connected:
+        return 'Connected';
+      case MqttConnectionState.disconnected:
+        return 'Disconnected';
+      case MqttConnectionState.connecting:
+        return 'Connecting';
+      default:
+        return 'Unknown Status';
+    }
   }
 
   Future<List<int>> loadBytes(String assetPath) async {

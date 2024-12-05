@@ -12,10 +12,14 @@ class ReportScreen extends StatefulWidget {
       {super.key,
       required this.data,
       required this.serialNo,
-      required this.appStartTime});
+      required this.appStartTime,
+      required this.alarmCache,
+      required this.isInternet});
   final List<Map<String, dynamic>> data;
+  final List<Map<String, dynamic>> alarmCache;
   final String serialNo;
   DateTime appStartTime;
+  final int isInternet;
   @override
   State<ReportScreen> createState() => _ReportScreenState();
 }
@@ -172,121 +176,122 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
             ),
-            Container(
-              width: 2, // Width of the vertical line
-              color: Colors.black, // Color of the vertical line
-              // Adjust the height to match the height of the largest child
-              height: MediaQuery.of(context).size.height - 50,
-            ),
-            // Second part
-            Expanded(
-              child: Container(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Text(
-                      'Past Report',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.blue, // Text color
-                        shadowColor: Colors.blueAccent, // Shadow color
-                        elevation: 10, // Elevation
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(30.0), // Rounded corners
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 30,
-                          vertical: 15,
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+            if (widget.isInternet == 3)
+              Container(
+                width: 2, // Width of the vertical line
+                color: Colors.black, // Color of the vertical line
+                // Adjust the height to match the height of the largest child
+                height: MediaQuery.of(context).size.height - 50,
+              ),
+            if (widget.isInternet == 3)
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Past Report',
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
                       ),
-                      onPressed: () {
-                        _selectDate(context);
-                      },
-                      child: Text('   Daily Report   '),
-                    ),
-                    _selectedDate == null
-                        ? SizedBox(height: 20)
-                        : Text(
-                            'Selected Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}',
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.bold),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.blue, // Text color
+                          shadowColor: Colors.blueAccent, // Shadow color
+                          elevation: 10, // Elevation
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(30.0), // Rounded corners
                           ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.blue, // Text color
-                        shadowColor: Colors.blueAccent, // Shadow color
-                        elevation: 10, // Elevation
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(30.0), // Rounded corners
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 30,
+                            vertical: 15,
+                          ),
+                          textStyle: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 30,
-                          vertical: 15,
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        onPressed: () {
+                          _selectDate(context);
+                        },
+                        child: Text('   Daily Report   '),
                       ),
-                      onPressed: () {
-                        _selectDateAndCalculateWeek(context);
-                      },
-                      child: Text(' Weekly Report '),
-                    ),
-                    _weekRange == null
-                        ? SizedBox(height: 20)
-                        : Text(
-                            'Selected Week: $_weekRange',
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.bold),
+                      _selectedDate == null
+                          ? SizedBox(height: 20)
+                          : Text(
+                              'Selected Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}',
+                              style: TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.blue, // Text color
+                          shadowColor: Colors.blueAccent, // Shadow color
+                          elevation: 10, // Elevation
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(30.0), // Rounded corners
                           ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Color.fromARGB(255, 255, 255, 255),
-                        backgroundColor: Colors.blue, // Text color
-                        shadowColor: Colors.blueAccent, // Shadow color
-                        elevation: 10, // Elevation
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(30.0), // Rounded corners
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 30,
+                            vertical: 15,
+                          ),
+                          textStyle: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 30,
-                          vertical: 15,
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        onPressed: () {
+                          _selectDateAndCalculateWeek(context);
+                        },
+                        child: Text(' Weekly Report '),
                       ),
-                      onPressed: () {
-                        _showMonthSelector(context);
-                      },
-                      child: Text('Monthly Report'),
-                    ),
-                    _selectedMonth == null
-                        ? Text("")
-                        : Text(
-                            'Selected Month: $_selectedMonth',
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.bold),
+                      _weekRange == null
+                          ? SizedBox(height: 20)
+                          : Text(
+                              'Selected Week: $_weekRange',
+                              style: TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Color.fromARGB(255, 255, 255, 255),
+                          backgroundColor: Colors.blue, // Text color
+                          shadowColor: Colors.blueAccent, // Shadow color
+                          elevation: 10, // Elevation
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(30.0), // Rounded corners
                           ),
-                  ],
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 30,
+                            vertical: 15,
+                          ),
+                          textStyle: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () {
+                          _showMonthSelector(context);
+                        },
+                        child: Text('Monthly Report'),
+                      ),
+                      _selectedMonth == null
+                          ? Text("")
+                          : Text(
+                              'Selected Month: $_selectedMonth',
+                              style: TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                    ],
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -414,9 +419,11 @@ class _ReportScreenState extends State<ReportScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => GraphReport(
-                data: widget.data,
-                remark: _remarkController.text,
-                appStartTime: widget.appStartTime),
+              data: widget.data,
+              remark: _remarkController.text,
+              appStartTime: widget.appStartTime,
+              alarmCache: widget.alarmCache,
+            ),
           ),
         ).then((_) {
           // Refresh the screen when coming back from GraphReport

@@ -75,6 +75,7 @@ class _LineCharWidState extends State<LineCharWid> {
   double _maxYAxisValue = 10; // Default value
   double _intervalYAxisValue = 2.5; // Default value
   String mqttPayload = " ";
+  List<Map<String, dynamic>> _alarmCache = [];
 
   // final StreamController<List<ChartData>> _streamController =
   //     StreamController<List<ChartData>>.broadcast();
@@ -112,6 +113,10 @@ class _LineCharWidState extends State<LineCharWid> {
         );
 
         if (result == 1) {
+          if (widget.isInternet == 2) {
+            await mqttService.publishPuritySettings(_serialNo);
+          }
+
           _loadLimits();
         }
       }
@@ -124,11 +129,15 @@ class _LineCharWidState extends State<LineCharWid> {
             builder: (context) => FlowSetting(
               max: minMax.item1,
               min: minMax.item2,
+              isInternet: widget.isInternet,
             ),
           ),
         );
 
         if (result == 1) {
+          if (widget.isInternet == 2) {
+            await mqttService.publishPuritySettings(_serialNo);
+          }
           _loadLimits();
         }
       }
@@ -141,11 +150,15 @@ class _LineCharWidState extends State<LineCharWid> {
             builder: (context) => PressureSetting(
               max: minMax.item1,
               min: minMax.item2,
+              isInternet: widget.isInternet,
             ),
           ),
         );
 
         if (result == 1) {
+          if (widget.isInternet == 2) {
+            await mqttService.publishPuritySettings(_serialNo);
+          }
           _loadLimits();
         }
       }
@@ -158,11 +171,15 @@ class _LineCharWidState extends State<LineCharWid> {
             builder: (context) => TempSetting(
               max: minMax.item1,
               min: minMax.item2,
+              isInternet: widget.isInternet,
             ),
           ),
         );
 
         if (result == 1) {
+          if (widget.isInternet == 2) {
+            await mqttService.publishPuritySettings(_serialNo);
+          }
           _loadLimits();
         }
       }
@@ -190,16 +207,14 @@ class _LineCharWidState extends State<LineCharWid> {
     loadMuteState();
     if (widget.isInternet == 2) {
       mqttService = widget.mqttService!;
-      //mqttService.connect(); // Connect to MQTT
 
-      // Listen to incoming messages
       mqttService.messageStream.listen((message) {
-        mqttPayload = message;
         getMqttdata(message);
+        _loadLimits();
       });
     }
 
-    // _updateController = StreamController<void>.broadcast();
+    _updateController = StreamController<void>.broadcast();
 
     if (_isRunning) return;
     Timer.periodic(const Duration(seconds: 1), (timer) async {
@@ -208,7 +223,7 @@ class _LineCharWidState extends State<LineCharWid> {
         await getData();
       }
 
-      //_updateController.add(null);
+      _updateController.add(null);
       time++;
       _updateCurrentString();
     });
@@ -218,7 +233,7 @@ class _LineCharWidState extends State<LineCharWid> {
         storeAverageData();
       });
     }
-    _getLPMValuesWithDelay(serialNo);
+    _getLPMValuesWithDelay(_serialNo);
 
     _puritySubscription = _purityController.stream.listen((data) {
       setState(() {
@@ -256,15 +271,15 @@ class _LineCharWidState extends State<LineCharWid> {
 
       _updateDataSource();
     });
-    if (widget.isInternet == 3)
-      _streamSubscription = _updateController.stream.listen((_) {
-        if (_latestPurity != null &&
-            _latestFlowRate != null &&
-            _latestPressure != null &&
-            _latestTemperature != null) {
-          _updateString();
-        }
-      });
+
+    _streamSubscription = _updateController.stream.listen((_) {
+      if (_latestPurity != null &&
+          _latestFlowRate != null &&
+          _latestPressure != null &&
+          _latestTemperature != null) {
+        _updateString();
+      }
+    });
   }
 
   void _updateDataSource() {
@@ -307,17 +322,20 @@ class _LineCharWidState extends State<LineCharWid> {
     _temperatureData.add(_ChartData(0, -1));
   }
 
+  String topic2Payload = '';
+
   Future<Tuple2<double, double>?> setMinMax(String gasName) async {
     Map<String, dynamic> jsonData;
     print("internettdfg: ${widget.isInternet}");
     if (widget.isInternet == 2) {
-      String payload = mqttService.topic2Payload;
-      print("Topic 2 Payload: $payload");
-      if (payload != null) {
-        jsonData = jsonDecode(payload); // Parse the payload JSON
-        print("jsondatadcdc: $jsonData");
-      } else {
-        return null; // Return null if payload is missing
+      mqttService.subscribeToTopic2(_serialNo);
+      topic2Payload = widget.mqttService!.topic2Payload;
+      try {
+        jsonData = jsonDecode(topic2Payload);
+        print("min max jsondata: $jsonData");
+      } catch (e) {
+        print('Error parsing topic2Payload: $e');
+        return null;
       }
     } else {
       final data = await ApiService.fetchMinMaxData();
@@ -446,7 +464,7 @@ class _LineCharWidState extends State<LineCharWid> {
     } catch (e) {
       print("Error loading limits $e");
     }
-    if (widget.isInternet == 3) _updateString();
+    _updateString();
   }
 
   void _addString(String value) {
@@ -485,27 +503,40 @@ class _LineCharWidState extends State<LineCharWid> {
   void _updateString() async {
     final db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
-    serialNo = await prefs.getString('serialNo') ?? '';
+    _serialNo = await prefs.getString('serialNo') ?? '';
     if ((_latestPurity! > Purity_maxLimit! ||
         _latestPurity! < Purity_minLimit!)) {
       // print("Purity max: $Purity_maxLimit");
+      print("Store Alarmsdfcsfv: $_latestPurity");
       if (!purityAlarmTriggered) {
-        try {
-          db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestPurity!),
-            limitmax: drift.Value(Purity_maxLimit!),
-            limitmin: drift.Value(Purity_minLimit!),
-            type: drift.Value("Purity"),
-            serialNo: drift.Value(serialNo),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-          prefs.setDouble("PurityP", _latestPurity!);
-          List<AlarmTableData> storedData = await db.getAllAlarms();
-          purityAlarmTriggered = true;
-          print("Store Alarms: $storedData");
-        } catch (e) {
-          print("Error to store alarms : $e");
+        if (widget.isInternet == 3) {
+          try {
+            db.insertAlarm(AlarmTableCompanion(
+              value: drift.Value(_latestPurity!),
+              limitmax: drift.Value(Purity_maxLimit!),
+              limitmin: drift.Value(Purity_minLimit!),
+              type: drift.Value("Purity"),
+              serialNo: drift.Value(_serialNo),
+              recordedAt: drift.Value(DateTime.now()),
+            ));
+            prefs.setDouble("PurityP", _latestPurity!);
+            List<AlarmTableData> storedData = await db.getAllAlarms();
+
+            print("Store Alarms: $_latestPurity");
+          } catch (e) {
+            print("Error to store alarms : $e");
+          }
         }
+        purityAlarmTriggered = true;
+
+        _alarmCache.add({
+          'Alarms': _latestPurity!,
+          'limitmax': Purity_maxLimit!,
+          'limitmin': Purity_minLimit!,
+          'type': "Purity",
+          'serialNo': _serialNo,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
       }
 
       if (_latestPurity! > Purity_maxLimit!) {
@@ -532,22 +563,33 @@ class _LineCharWidState extends State<LineCharWid> {
         printvalue != 111 &&
         printvalue != 112) {
       if (!flowAlarmTriggered) {
-        try {
-          db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestFlowRate!),
-            limitmax: drift.Value(Flow_maxLimit!),
-            limitmin: drift.Value(Flow_minLimit!),
-            type: drift.Value("Flow"),
-            serialNo: drift.Value(serialNo),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-          prefs.setDouble("FlowP", _latestFlowRate!);
-          List<AlarmTableData> storedData = await db.getAllAlarms();
-          flowAlarmTriggered = true;
-          print("Store Alarms: $storedData");
-        } catch (e) {
-          print("Error to store alarms : $e");
+        if (widget.isInternet == 3) {
+          try {
+            db.insertAlarm(AlarmTableCompanion(
+              value: drift.Value(_latestFlowRate!),
+              limitmax: drift.Value(Flow_maxLimit!),
+              limitmin: drift.Value(Flow_minLimit!),
+              type: drift.Value("Flow"),
+              serialNo: drift.Value(_serialNo),
+              recordedAt: drift.Value(DateTime.now()),
+            ));
+            prefs.setDouble("FlowP", _latestFlowRate!);
+            List<AlarmTableData> storedData = await db.getAllAlarms();
+
+            print("Store Alarms: $storedData");
+          } catch (e) {
+            print("Error to store alarms : $e");
+          }
         }
+        flowAlarmTriggered = true;
+        _alarmCache.add({
+          'Alarms': _latestFlowRate!,
+          'limitmax': Flow_maxLimit!,
+          'limitmin': Flow_minLimit!,
+          'type': "Flow",
+          'serialNo': _serialNo,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
       }
 
       if (_latestFlowRate! > Flow_maxLimit!) {
@@ -572,25 +614,36 @@ class _LineCharWidState extends State<LineCharWid> {
         printvalue != 111) {
       // Check if the alarm has already been triggered
       if (!pressureAlarmTriggered) {
-        try {
-          db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestPressure!),
-            limitmax: drift.Value(Pressure_maxLimit!),
-            limitmin: drift.Value(Pressure_minLimit!),
-            type: drift.Value("Pressure"),
-            serialNo: drift.Value(serialNo),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-          prefs.setDouble("PressureP", _latestPressure!);
-          List<AlarmTableData> storedData = await db.getAllAlarms();
-          print("Stored Alarms: $storedData");
+        if (widget.isInternet == 3) {
+          try {
+            db.insertAlarm(AlarmTableCompanion(
+              value: drift.Value(_latestPressure!),
+              limitmax: drift.Value(Pressure_maxLimit!),
+              limitmin: drift.Value(Pressure_minLimit!),
+              type: drift.Value("Pressure"),
+              serialNo: drift.Value(_serialNo),
+              recordedAt: drift.Value(DateTime.now()),
+            ));
+            prefs.setDouble("PressureP", _latestPressure!);
+            List<AlarmTableData> storedData = await db.getAllAlarms();
+            print("Stored Alarms: $storedData");
 
-          // Set alarm as triggered
-          pressureAlarmTriggered = true;
-          print("print pressurealarmtrigger: $pressureAlarmTriggered");
-        } catch (e) {
-          print("Error to store alarms: $e");
+            // Set alarm as triggered
+
+            print("print pressurealarmtrigger: $pressureAlarmTriggered");
+          } catch (e) {
+            print("Error to store alarms: $e");
+          }
         }
+        _alarmCache.add({
+          'Alarms': _latestPressure!,
+          'limitmax': Pressure_maxLimit!,
+          'limitmin': Pressure_minLimit!,
+          'type': "Pressure",
+          'serialNo': _serialNo,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+        pressureAlarmTriggered = true;
       }
 
       // Check for pressure status
@@ -614,23 +667,34 @@ class _LineCharWidState extends State<LineCharWid> {
     if (_latestTemperature! > Temp_maxLimit! ||
         _latestTemperature! < Temp_minLimit!) {
       if (!tempAlarmTriggered) {
-        try {
-          db.insertAlarm(AlarmTableCompanion(
-            value: drift.Value(_latestTemperature!),
-            limitmax: drift.Value(Temp_maxLimit!),
-            limitmin: drift.Value(Temp_minLimit!),
-            type: drift.Value("Temperature"),
-            serialNo: drift.Value(serialNo),
-            recordedAt: drift.Value(DateTime.now()),
-          ));
-          prefs.setDouble("TempP", _latestTemperature!);
-          print("Storing Temperature: $_latestTemperature");
-          tempAlarmTriggered = true;
-          List<AlarmTableData> storedData = await db.getAllAlarms();
-          print("Store Alarms: $storedData");
-        } catch (e) {
-          print("Error to store alarms : $e");
+        if (widget.isInternet == 3) {
+          try {
+            db.insertAlarm(AlarmTableCompanion(
+              value: drift.Value(_latestTemperature!),
+              limitmax: drift.Value(Temp_maxLimit!),
+              limitmin: drift.Value(Temp_minLimit!),
+              type: drift.Value("Temperature"),
+              serialNo: drift.Value(_serialNo),
+              recordedAt: drift.Value(DateTime.now()),
+            ));
+            prefs.setDouble("TempP", _latestTemperature!);
+            print("Storing Temperature: $_latestTemperature");
+
+            List<AlarmTableData> storedData = await db.getAllAlarms();
+            print("Store Alarms: $storedData");
+          } catch (e) {
+            print("Error to store alarms : $e");
+          }
         }
+        _alarmCache.add({
+          'Alarms': _latestTemperature!,
+          'limitmax': Temp_maxLimit!,
+          'limitmin': Temp_minLimit!,
+          'type': "Temperature",
+          'serialNo': _serialNo,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+        tempAlarmTriggered = true;
       }
 
       if (_latestTemperature! > Temp_maxLimit!) {
@@ -956,9 +1020,9 @@ class _LineCharWidState extends State<LineCharWid> {
                                 },
                               ),
                               primaryYAxis: NumericAxis(
-                                maximum: serialNo.startsWith('ODC') ? 20 : 100,
+                                maximum: _serialNo.startsWith('ODC') ? 20 : 100,
                                 minimum: 0,
-                                interval: serialNo.startsWith('ODC') ? 5 : 25,
+                                interval: _serialNo.startsWith('ODC') ? 5 : 25,
                                 axisLine: AxisLine(width: 0),
                                 majorTickLines: MajorTickLines(size: 0),
                                 title: AxisTitle(text: 'PSI'),
@@ -1342,8 +1406,10 @@ class _LineCharWidState extends State<LineCharWid> {
                                   MaterialPageRoute(
                                       builder: (context) => ReportScreen(
                                             data: _cache,
-                                            serialNo: _serialNo!,
+                                            serialNo: _serialNo,
                                             appStartTime: appStartTime!,
+                                            alarmCache: _alarmCache,
+                                            isInternet: widget.isInternet,
                                           )));
                             },
                             child: Container(
@@ -1469,7 +1535,7 @@ class _LineCharWidState extends State<LineCharWid> {
   double? _latestPressure;
   double? _latestTemperature;
 
-  String? _serialNo;
+  String _serialNo = " ";
   bool _isRunning = false;
   List<Map<String, dynamic>> _cache = [];
 
@@ -1495,7 +1561,7 @@ class _LineCharWidState extends State<LineCharWid> {
           if (purity > 99.9) {
             purity = 99.9;
           }
-          if (_serialNo!.startsWith("ODC")) {
+          if (_serialNo.startsWith("ODC")) {
             if (pressure > 20.0) {
               pressure = 20.0;
             }
@@ -1504,7 +1570,7 @@ class _LineCharWidState extends State<LineCharWid> {
               pressure = 99.9;
             }
           }
-          switch (_serialNo?.substring(0, 3)) {
+          switch (_serialNo.substring(0, 3)) {
             // Switch on the first 3 characters of _serialNo
             case 'OP1':
               if (flowRate > 100) {
@@ -1558,12 +1624,12 @@ class _LineCharWidState extends State<LineCharWid> {
               'timestamp': DateTime.now().toIso8601String(),
             });
           });
-          if (_serialNo!.startsWith("ODG") ||
-              _serialNo!.startsWith("ODP") ||
-              _serialNo!.startsWith("ODA")) {
+          if (_serialNo.startsWith("ODG") ||
+              _serialNo.startsWith("ODP") ||
+              _serialNo.startsWith("ODA")) {
             printvalue = 111;
-          } else if (_serialNo!.startsWith("OPP") ||
-              _serialNo!.startsWith("OGP")) {
+          } else if (_serialNo.startsWith("OPP") ||
+              _serialNo.startsWith("OGP")) {
             printvalue = 112;
           }
 
@@ -1584,24 +1650,23 @@ class _LineCharWidState extends State<LineCharWid> {
     }
   }
 
-  String serialNo = " ";
   void getMqttdata(String payload) {
     try {
       Map<String, dynamic> jsonData = jsonDecode(payload);
-
+      print("jsondatacdsc: $jsonData");
       double purity = double.tryParse(jsonData['Purity'] ?? '0.0')!;
       double flowRate = double.tryParse(jsonData['Flow Rate'] ?? '0.0')!;
       double pressure = double.tryParse(jsonData['Pressure'] ?? '0.0')!;
       double temperature = double.tryParse(jsonData['Temperature'] ?? '0.0')!;
       setState(() {
-        serialNo = jsonData['serialNo'] ?? '';
+        _serialNo = jsonData['serialNo'] ?? '';
       });
 
-      print("serial njkvnfjhnvud: $serialNo");
+      print("serial njkvnfjhnvud: $pressure");
       if (purity > 99.9) {
         purity = 99.9;
       }
-      if (serialNo.startsWith("ODC")) {
+      if (_serialNo.startsWith("ODC")) {
         if (pressure > 20.0) {
           pressure = 20.0;
         }
@@ -1611,7 +1676,7 @@ class _LineCharWidState extends State<LineCharWid> {
         }
       }
 
-      switch (serialNo.substring(0, 3)) {
+      switch (_serialNo.substring(0, 3)) {
         case 'OP1':
           if (flowRate > 100) {
             flowRate = 100.0;
@@ -1656,6 +1721,8 @@ class _LineCharWidState extends State<LineCharWid> {
       pressureList.add(pressure);
       temperatureList.add(temperature);
 
+      print("purity list:  $pressureList");
+
       // Update state and cache
       setState(() {
         _cache.add({
@@ -1666,13 +1733,14 @@ class _LineCharWidState extends State<LineCharWid> {
           'timestamp': DateTime.now().toIso8601String(),
         });
       });
+      print("cachedvkh: $_cache");
 
       // Determine print value based on serialNo
-      if (serialNo.startsWith("ODG") ||
-          serialNo.startsWith("ODP") ||
-          serialNo.startsWith("ODA")) {
+      if (_serialNo.startsWith("ODG") ||
+          _serialNo.startsWith("ODP") ||
+          _serialNo.startsWith("ODA")) {
         printvalue = 111;
-      } else if (serialNo.startsWith("OPP") || serialNo.startsWith("OGP")) {
+      } else if (_serialNo.startsWith("OPP") || _serialNo.startsWith("OGP")) {
         printvalue = 112;
       }
 
@@ -1716,7 +1784,7 @@ class _LineCharWidState extends State<LineCharWid> {
           double temperature =
               double.tryParse(jsonData['Temperature'] ?? '0.0')!;
           _serialNo = jsonData['serialNo'] ?? '';
-
+          print("pressurejnvjvn: $pressure");
           final entity = OxyDatabaseCompanion(
             purity: drift.Value(purity),
             flow: drift.Value(flowRate),

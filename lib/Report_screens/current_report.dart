@@ -26,11 +26,14 @@ class GraphReport extends StatefulWidget {
   final List<Map<String, dynamic>> data;
   DateTime appStartTime;
   String remark;
+  List<Map<String, dynamic>> alarmCache = [];
+
   GraphReport(
       {Key? key,
       required this.data,
       required this.remark,
-      required this.appStartTime})
+      required this.appStartTime,
+      required this.alarmCache})
       : super(key: key);
 
   @override
@@ -58,8 +61,6 @@ class GraphReportState extends State<GraphReport> {
   late DateTime lastTimestamp;
   late DateTime firstTimestamp;
 
-  List<Map<String, dynamic>> _dataAlarms = [];
-
   final GlobalKey _chartKey = GlobalKey();
 
   late final file;
@@ -81,28 +82,28 @@ class GraphReportState extends State<GraphReport> {
   @override
   void initState() {
     initializeTimes();
-    _getCurrentAlarmData();
+    // _getCurrentAlarmData();
     super.initState();
   }
 
-  void _getCurrentAlarmData() async {
-    final _db = await AppDbSingleton().database;
-    DateTime endOfTime = DateTime.now();
-    List<AlarmTableData> dbData =
-        await _db.getAlarmsByCurrent(widget.appStartTime, endOfTime);
-    setState(() {
-      _dataAlarms = dbData
-          .map((data) => {
-                'timestamp': data.recordedAt,
-                'limitmax': data.limitmax,
-                'limitmin': data.limitmin,
-                'Alarms': data.value,
-                'type': data.type,
-              })
-          .toList();
-    });
-    print("Data Alarms of current report: $_dataAlarms");
-  }
+  // void _getCurrentAlarmData() async {
+  //   final _db = await AppDbSingleton().database;
+  //   DateTime endOfTime = DateTime.now();
+  //   List<AlarmTableData> dbData =
+  //       await _db.getAlarmsByCurrent(widget.appStartTime, endOfTime);
+  //   setState(() {
+  //     _dataAlarms = dbData
+  //         .map((data) => {
+  //               'timestamp': data.recordedAt,
+  //               'limitmax': data.limitmax,
+  //               'limitmin': data.limitmin,
+  //               'Alarms': data.value,
+  //               'type': data.type,
+  //             })
+  //         .toList();
+  //   });
+  //   print("Data Alarms of current report: $_dataAlarms");
+  // }
 
   static String _formatDateTime(DateTime dateTime) {
     return DateFormat('d-M-yyyy, HH:mm').format(dateTime);
@@ -464,7 +465,7 @@ class GraphReportState extends State<GraphReport> {
       'Type'
     ];
     final DateFormat formatter = DateFormat('dd-MM-yyyy HH:mm:ss');
-    final dataAlarmsRow = _dataAlarms.map((data) {
+    final dataAlarmsRow = widget.alarmCache.map((data) {
       final timestamp = DateTime.parse(data['timestamp'].toString());
       return [
         formatter.format(timestamp), // DateTime
@@ -715,7 +716,7 @@ class GraphReportState extends State<GraphReport> {
                           ),
                         ])),
                 pw.SizedBox(height: 15),
-                if (_dataAlarms.isEmpty)
+                if (widget.alarmCache.isEmpty)
                   pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [

@@ -184,19 +184,19 @@ class _DemoWidState extends State<DemoWid> {
     _purityChartController?.updateDataSource(
       addedDataIndex: _purityData.length - 1,
       removedDataIndex:
-          _purityData.length > 61 ? 0 : -1, // Null indicates no removal
+          _purityData.length > 1 ? 0 : -1, // Null indicates no removal
     );
     _flowRateChartController?.updateDataSource(
       addedDataIndex: _flowRateData.length - 1,
-      removedDataIndex: _flowRateData.length > 61 ? 0 : -1,
+      removedDataIndex: _flowRateData.length > 1 ? 0 : -1,
     );
     _pressureChartController?.updateDataSource(
       addedDataIndex: _pressureData.length - 1,
-      removedDataIndex: _pressureData.length > 61 ? 0 : -1,
+      removedDataIndex: _pressureData.length > 1 ? 0 : -1,
     );
     _temperatureChartController?.updateDataSource(
       addedDataIndex: _temperatureData.length - 1,
-      removedDataIndex: _temperatureData.length > 61 ? 0 : -1,
+      removedDataIndex: _temperatureData.length > 1 ? 0 : -1,
     );
   }
 

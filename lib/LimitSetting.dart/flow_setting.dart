@@ -9,8 +9,8 @@ import 'package:drift/drift.dart' as drift;
 class FlowSetting extends StatefulWidget {
   final double min;
   final double max;
-
-  FlowSetting({required this.min, required this.max});
+  final int isInternet;
+  FlowSetting({required this.min, required this.max, required this.isInternet});
 
   @override
   _FlowSettingState createState() => _FlowSettingState();
@@ -36,7 +36,6 @@ class _FlowSettingState extends State<FlowSetting> {
   }
 
   Future<void> _saveToSharedPreferences() async {
-    final _db = await AppDbSingleton().database;
     final prefs = await SharedPreferences.getInstance();
     double max = double.parse(flowmax.toStringAsFixed(1));
     double min = double.parse(flowmin.toStringAsFixed(1));
@@ -44,18 +43,26 @@ class _FlowSettingState extends State<FlowSetting> {
     prefs.setDouble('flowMax', max);
     prefs.setDouble('flowMin', min);
 
-    DateTime dateTime = DateTime.now();
     serialNo = prefs.getString('serialNo') ?? "";
-    await _db.insertLimitSetting(LimitSettingsTableCompanion(
-      limit_max: drift.Value(max),
-      limit_min: drift.Value(min),
-      type: drift.Value("Flow"),
-      serialNo: drift.Value(serialNo!),
-      recordedAt: drift.Value(dateTime),
-    ));
 
-    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-    print("Storedddd data =>   $storedData");
+    if (widget.isInternet == 3) {
+      final _db = await AppDbSingleton().database;
+      DateTime dateTime = DateTime.now();
+      try {
+        await _db.insertLimitSetting(LimitSettingsTableCompanion(
+          limit_max: drift.Value(max),
+          limit_min: drift.Value(min),
+          type: drift.Value("Flow"),
+          serialNo: drift.Value(serialNo!),
+          recordedAt: drift.Value(dateTime),
+        ));
+      } catch (e) {
+        print("error in purity data--> $e");
+      }
+
+      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+      print("Storedddd data =>   $storedData");
+    }
   }
 
   @override
@@ -212,7 +219,9 @@ class _FlowSettingState extends State<FlowSetting> {
                               _isLoading = true;
                             });
 
-                            await postStoredData();
+                            if (widget.isInternet == 3) {
+                              await postStoredData();
+                            }
                             Navigator.pop(context, 1);
 
                             ScaffoldMessenger.of(context).showSnackBar(

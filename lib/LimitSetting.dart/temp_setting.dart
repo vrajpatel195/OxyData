@@ -12,7 +12,8 @@ import 'package:drift/drift.dart' as drift;
 class TempSetting extends StatefulWidget {
   final double min;
   final double max;
-  TempSetting({required this.min, required this.max});
+  final int isInternet;
+  TempSetting({required this.min, required this.max, required this.isInternet});
   @override
   _TempSettingState createState() => _TempSettingState();
 }
@@ -37,31 +38,34 @@ class _TempSettingState extends State<TempSetting> {
   }
 
   Future<void> _saveToSharedPreferences() async {
-    final _db = await AppDbSingleton().database;
-
     final prefs = await SharedPreferences.getInstance();
 
     double max = double.parse(tempMax.toStringAsFixed(1));
     double min = double.parse(tempMin.toStringAsFixed(1));
-    DateTime dateTime = DateTime.now();
+
     prefs.setDouble('tempMax', max);
     prefs.setDouble('tempMin', min);
 
     serialNo = prefs.getString('serialNo') ?? "";
-    try {
-      await _db.insertLimitSetting(LimitSettingsTableCompanion(
-        limit_max: drift.Value(max),
-        limit_min: drift.Value(min),
-        type: drift.Value("Temperature"),
-        serialNo: drift.Value(serialNo!),
-        recordedAt: drift.Value(dateTime),
-      ));
-    } catch (e) {
-      print("Error on temp data --> $e");
-    }
 
-    List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
-    print("Storedddd data =>   $storedData");
+    if (widget.isInternet == 3) {
+      final _db = await AppDbSingleton().database;
+      DateTime dateTime = DateTime.now();
+      try {
+        await _db.insertLimitSetting(LimitSettingsTableCompanion(
+          limit_max: drift.Value(max),
+          limit_min: drift.Value(min),
+          type: drift.Value("Temperature"),
+          serialNo: drift.Value(serialNo!),
+          recordedAt: drift.Value(dateTime),
+        ));
+      } catch (e) {
+        print("error in purity data--> $e");
+      }
+
+      List<LimitSettingsTableData> storedData = await _db.getAllLimitSettings();
+      print("Storedddd data =>   $storedData");
+    }
   }
 
   @override
@@ -215,8 +219,9 @@ class _TempSettingState extends State<TempSetting> {
                                 setState(() {
                                   _isLoading = true;
                                 });
-
-                                await postStoredData();
+                                if (widget.isInternet == 3) {
+                                  await postStoredData();
+                                }
                                 Navigator.pop(context, 1);
 
                                 ScaffoldMessenger.of(context).showSnackBar(

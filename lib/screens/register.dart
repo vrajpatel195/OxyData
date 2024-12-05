@@ -73,7 +73,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Image.asset('assets/oxy_logo.png', width: 70, height: 70),
+            Image.asset('assets/oxy_logo.png', width: 60, height: 60),
             SizedBox(
               width: MediaQuery.of(context).size.width * 0.3,
               height: 10,
@@ -118,7 +118,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         child: Form(
           key: _formKey,
           child: Padding(
-            padding: const EdgeInsets.only(right: 10, left: 10),
+            padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

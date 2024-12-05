@@ -19,7 +19,6 @@ import 'login_internet.dart';
 class Dashboard extends StatefulWidget {
   Dashboard({super.key, required this.version});
   String version;
-
   @override
   State<StatefulWidget> createState() {
     return _DashboardState();
@@ -32,22 +31,23 @@ class _DashboardState extends State<Dashboard>
   bool _isLoading = false;
   final String _targetWifiName = "Oxydata_1";
   int isInternet = 1;
-
+  String connectionStatus = " ";
   bool checker = false;
-
   late AnimationController _animationController;
   late Animation<double> _animation;
   String serialNo = '';
   bool _isConnected = false;
   bool? permissionGranted;
-
   String oxyDataTitle = 'OxyData';
   String? selectedSerialNo;
   List<String> serialNumbers = [];
-
   String _formattedDateTime = '';
   late Timer _dateTimeTimer;
   late MqttService mqttService;
+  List<String> serialNumbersInternet = [];
+  String? selectedSerialNoInternet;
+
+  List<String> dropdownItems = ["Option 1", "Option 2", "Option 3", "Option 4"];
 
   @override
   void initState() {
@@ -78,13 +78,15 @@ class _DashboardState extends State<Dashboard>
     final formatter = DateFormat('dd/MM/yyyy  HH:mm:ss  ');
     setState(() {
       _formattedDateTime = formatter.format(now);
+      if (isInternet == 2) {
+        connectionStatus = mqttService.getConnectionStatusMessage();
+      }
+      print("connection status: $connectionStatus");
     });
   }
 
   @override
   void dispose() {
-    _wifiCheckTimer.cancel();
-
     _animationController.dispose();
     _dateTimeTimer.cancel();
     super.dispose();
@@ -124,11 +126,20 @@ class _DashboardState extends State<Dashboard>
     await Permission.activityRecognition.request();
   }
 
-  late Timer _wifiCheckTimer;
-
+  String _isConnection = '';
   void _startWifiCheckTimer() {
-    _wifiCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+    Timer.periodic(const Duration(seconds: 3), (timer) async {
       _updateWifiStatus();
+    });
+  }
+
+  void _startInternetCheckTimer() {
+    Timer.periodic(const Duration(seconds: 3), (timer) async {
+      _isConnection = mqttService.getConnectionStatusMessage();
+      print("is Connection: $_isConnection ");
+      if (_isConnection == "Disconnected") {
+        setState(() {});
+      }
     });
   }
 
@@ -230,9 +241,17 @@ class _DashboardState extends State<Dashboard>
   Future<void> fetchSerialNumbers() async {
     final db = await AppDbSingleton().database;
     List<String> serialNos = await db.getAllSerialNumbers();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
     setState(() {
       serialNumbers = serialNos;
+      serialNumbersInternet = prefs.getStringList('serialNumbers') ?? [];
     });
+  }
+
+  Future<void> _saveSerialNumbers() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('serialNumbers', serialNumbersInternet);
   }
 
   Future<void> _refreshPage() async {
@@ -339,7 +358,9 @@ class _DashboardState extends State<Dashboard>
                 child: ((_wifiName == "\"$_targetWifiName\"") ||
                         _isConnected ||
                         checker ||
-                        isInternet == 2)
+                        (isInternet == 2 &&
+                            _isConnection != "Disconnected" &&
+                            _isConnection != ""))
                     ? Stack(
                         children: [
                           LineCharWid(
@@ -349,141 +370,148 @@ class _DashboardState extends State<Dashboard>
                         ],
                       )
                     : Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedBuilder(
-                              animation: _animation,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: _animation.value,
-                                  child: const Icon(
-                                    Icons.wifi_off,
-                                    size: 50,
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 10),
-                            const Text(
-                              "Internet is not connected",
-                              style: TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: MediaQuery.of(context).size.width / 4,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      _showCustomDialog(context);
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                      foregroundColor: Colors.white,
-                                      shadowColor: Colors.blueAccent,
-                                      elevation: 10,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 20, vertical: 10),
-                                      textStyle: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              AnimatedBuilder(
+                                animation: _animation,
+                                builder: (context, child) {
+                                  return Transform.scale(
+                                    scale: _animation.value,
+                                    child: const Icon(
+                                      Icons.wifi_off,
+                                      size: 50,
                                     ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.refresh, size: 24),
-                                        SizedBox(width: 10),
-                                        Text('Connect'),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 10,
-                                ),
-                                SizedBox(
-                                  width: MediaQuery.of(context).size.width / 4,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (_) => DemoWid(
-                                                    version: widget.version,
-                                                  )));
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                      foregroundColor: Colors.white,
-                                      shadowColor: Colors.blueAccent,
-                                      elevation: 10,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 20, vertical: 10),
-                                      textStyle: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.play_arrow, size: 24),
-                                        SizedBox(width: 10),
-                                        Text('Demo Mode'),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width / 4,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  _showSerialNoDialog();
-                                  // Navigator.push(
-                                  //     context,
-                                  //     MaterialPageRoute(
-                                  //         builder: (_) => OldReportScreen()));
+                                  );
                                 },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
-                                  shadowColor: Colors.blueAccent,
-                                  elevation: 10,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                "Internet is not connected",
+                                style: TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width / 4,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        _showCustomDialog(context);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        foregroundColor: Colors.white,
+                                        shadowColor: Colors.blueAccent,
+                                        elevation: 10,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 10),
+                                        textStyle: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.refresh, size: 24),
+                                          SizedBox(width: 10),
+                                          Text('Connect'),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 10),
-                                  textStyle: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                                  const SizedBox(
+                                    width: 10,
                                   ),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.picture_as_pdf, size: 24),
-                                    SizedBox(width: 10),
-                                    Text('Report'),
-                                  ],
+                                  SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width / 4,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) => DemoWid(
+                                                      version: widget.version,
+                                                    )));
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        foregroundColor: Colors.white,
+                                        shadowColor: Colors.blueAccent,
+                                        elevation: 10,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 10),
+                                        textStyle: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.play_arrow, size: 24),
+                                          SizedBox(width: 10),
+                                          Text('Demo Mode'),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(
+                                height: 10,
+                              ),
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width / 4,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    _showSerialNoDialog();
+                                    // Navigator.push(
+                                    //     context,
+                                    //     MaterialPageRoute(
+                                    //         builder: (_) => OldReportScreen()));
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                    shadowColor: Colors.blueAccent,
+                                    elevation: 10,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 10),
+                                    textStyle: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.picture_as_pdf, size: 24),
+                                      SizedBox(width: 10),
+                                      Text('Report'),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
               ),
@@ -584,30 +612,46 @@ class _DashboardState extends State<Dashboard>
               width: MediaQuery.of(context).size.width / 4,
               child: ElevatedButton(
                 onPressed: () async {
-                  setState(() {
-                    isInternet = 2;
-                  });
-                  mqttService = MqttService();
-                  mqttService.connect();
-                  mqttService.messageStream.listen((message) {
-                    try {
-                      var jsonData = jsonDecode(message);
-                      serialNo = jsonData['serialNo'] ?? '';
-                      print("seialnondcvnkjnvkcvdc: $serialNo");
+                  SharedPreferences prefs =
+                      await SharedPreferences.getInstance();
+                  bool LoginForInternet =
+                      await prefs.getBool("LoginForInternet") ?? false;
 
-                      getInternetSerialNo(serialNo);
-                    } catch (e) {
-                      print("Error parsing message: $e");
-                    }
-                  });
+                  if (LoginForInternet == false) {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              LoginPage()), // Navigate to login page
+                    );
+                  } else {
+                    Navigator.pop(context);
+                    _showSerialDropdownDialog();
+                  }
 
-                  Navigator.pop(context); // Close the dialog
+                  // if (LoginForInternet == true)
+                  //   setState(() {
+                  //     isInternet = 2;
+                  //     _isLoading = true;
+                  //   });
+                  // mqttService = MqttService();
+                  // mqttService.connect(context);
+                  // _startInternetCheckTimer();
+                  // mqttService.messageStream.listen((message) {
+                  //   try {
+                  //     var jsonData = jsonDecode(message);
+                  //     serialNo = jsonData['serialNo'] ?? '';
+                  //     print("seialnondcvnkjnvkcvdc: $serialNo");
 
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //       builder: (_) => LoginPage()), // Navigate to login page
-                  // );
+                  //     getInternetSerialNo(serialNo);
+                  //   } catch (e) {
+                  //     print("Error parsing message: $e");
+                  //   }
+                  // });
+                  // Navigator.pop(context);
+                  // setState(() {
+                  //   _isLoading = false;
+                  // });
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -633,6 +677,196 @@ class _DashboardState extends State<Dashboard>
                   ],
                 ),
               ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddSerialDialog() {
+    TextEditingController serialController = TextEditingController();
+    showDialog<int>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(12.0),
+            height: MediaQuery.of(context).size.height * 0.2,
+            width: MediaQuery.of(context).size.width * 0.9,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: serialController,
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Add Serial Number',
+                                ),
+                                maxLines: null,
+                                keyboardType: TextInputType.multiline,
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            TextButton(
+                              child: Text('Cancel'),
+                              onPressed: () {
+                                Navigator.of(context).pop(null);
+                              },
+                            ),
+                            SizedBox(width: 10),
+                            ElevatedButton(
+                              child: Text('Add'),
+                              onPressed: () {
+                                if (serialController.text.isNotEmpty) {
+                                  setState(() {
+                                    serialNumbersInternet
+                                        .add(serialController.text);
+                                    _saveSerialNumbers();
+                                    selectedSerialNoInternet = serialController
+                                        .text; // Set the newly added serial as selected
+                                  });
+                                }
+                                Navigator.of(context).pop(); // Close the dialog
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Show the dropdown dialog for selecting serial numbers
+  void _showSerialDropdownDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Serial Number'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // DropdownButton to select a serial number
+              DropdownButtonFormField<String>(
+                value: selectedSerialNoInternet,
+                hint: Text("Select Serial Number"),
+                isExpanded: true,
+                items: serialNumbersInternet.map((String serialNo) {
+                  return DropdownMenuItem<String>(
+                    value: serialNo,
+                    child: Text(serialNo),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedSerialNoInternet =
+                        newValue!; // Update the selected serial number
+                    print(
+                        "selected serial number internet: $selectedSerialNoInternet");
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Cancel button
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                  },
+                  child: Text('Cancel'),
+                ),
+                // Add Serial No button
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the current dialog
+                    _showAddSerialDialog(); // Show add serial number dialog
+                  },
+                  child: Text('Add Serial No'),
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedSerialNoInternet != null) {
+                      setState(() {
+                        serialNumbersInternet.remove(selectedSerialNoInternet);
+                        selectedSerialNoInternet = null; // Reset selection
+                      });
+                      print("Serial number deleted.");
+                      Navigator.of(context)
+                          .pop(); // Close the dialog after deletion
+                    }
+                  },
+                  child: Text(
+                    'Delete Serial No',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                // OK button
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedSerialNoInternet != null) {
+                      setState(() {
+                        isInternet = 2;
+                        _isLoading = true;
+                      });
+                      mqttService = MqttService();
+                      mqttService.connect(context, selectedSerialNoInternet!);
+                      _startInternetCheckTimer();
+                      try {
+                        mqttService.messageStream.listen((message) {
+                          try {
+                            var jsonData = jsonDecode(message);
+                            serialNo = jsonData['serialNo'] ?? '';
+
+                            getInternetSerialNo(serialNo);
+                          } catch (e) {
+                            print("Error parsing message: $e");
+                          }
+                        });
+                      } catch (e) {
+                        print("Error parsing message: $e");
+                      }
+
+                      setState(() {
+                        _isLoading = false;
+                      });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Text('OK', style: TextStyle(color: Colors.white)),
+                  style:
+                      ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                ),
+              ],
             ),
           ],
         );

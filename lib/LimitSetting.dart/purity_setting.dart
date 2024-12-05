@@ -3,7 +3,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../Database/db/app_db.dart';
-import '../Services/mqtt_connect.dart';
 import 'api_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -229,8 +228,6 @@ class _PuritySettingState extends State<PuritySetting> {
                                   });
                                   if (widget.isInternet == 3) {
                                     await postStoredData();
-                                  } else {
-                                    await MqttService().publishPuritySettings();
                                   }
 
                                   Navigator.pop(context, 1);

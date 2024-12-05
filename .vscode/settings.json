@@ -10,5 +10,6 @@
         "syncfusion",
         "vsync"
     ],
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "cmake.sourceDirectory": "C:/Users/VRAJ/Documents/Internship/oxydata/linux/flutter"
 }
